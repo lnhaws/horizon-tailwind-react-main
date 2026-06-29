@@ -72,13 +72,12 @@ const Tables = () => {
 
       // BƯỚC 2: Upload ảnh
       if (imageFile && savedProduct && savedProduct.id) {
-        const formData = new FormData();
-        formData.append('image', imageFile);
-        await productApi.uploadImage(savedProduct.id, formData);
+        // 🌟 BẢN FIX CUỐI CÙNG: KHÔNG ĐÓNG GÓI FORMDATA Ở ĐÂY NỮA
+        // Chỉ truyền đúng cái file thô qua cho productApi xử lý
+        await productApi.uploadImage(savedProduct.id, imageFile); 
       }
 
       setIsModalOpen(false);
-      // Thay vì gọi fetchProducts cũ, giờ mình gọi fetchData để làm mới cả danh mục (nếu cần)
       fetchData(); 
       alert("Lưu sản phẩm thành công!");
     } catch (error) {
