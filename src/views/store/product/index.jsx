@@ -5,9 +5,9 @@ import cartApi from "api/cartApi";
 import { 
   MdAddShoppingCart, 
   MdKeyboardArrowLeft, 
-  MdVerifiedUser, 
+  MdEco, 
   MdLocalShipping, 
-  MdAssignmentReturn,
+  MdLocalCafe,
   MdFlashOn
 } from "react-icons/md";
 
@@ -15,12 +15,12 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [relatedProducts, setRelatedProducts] = useState([]); // 🌟 Thêm state lưu SP tương tự
+  const [relatedProducts, setRelatedProducts] = useState([]); 
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
 
   const getImageUrl = (url) => {
-    if (!url) return "https://via.placeholder.com/600";
+    if (!url) return "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop";
     if (url.startsWith("http")) return url;
     const cleanUrl = url.startsWith("/") ? url.slice(1) : url;
     return `http://localhost:8900/api/catalog/${cleanUrl}`;
@@ -30,19 +30,13 @@ export default function ProductDetail() {
     const fetchProductData = async () => {
       setLoading(true);
       try {
-        // 1. Lấy chi tiết sản phẩm hiện tại
         const data = await productApi.getProductById(id);
         setProduct(data);
-        setQuantity(1); // Reset lại số lượng về 1 khi qua sản phẩm mới
+        setQuantity(1); 
 
-        // 2. Lấy danh sách sản phẩm tương tự (cùng danh mục)
         if (data) {
             const allProducts = await productApi.getAllProducts();
-            
-            // Tìm category ID của sản phẩm hiện tại
             const currentCatId = data.categoryId || data.category?.id;
-            
-            // Lọc: Cùng Category + Không lấy trùng sản phẩm hiện tại + Chỉ lấy 4 món
             const related = allProducts.filter(p => {
                 const pCatId = p.categoryId || p.category?.id;
                 return pCatId === currentCatId && p.id !== data.id;
@@ -57,7 +51,7 @@ export default function ProductDetail() {
     };
     
     fetchProductData();
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // 🌟 Cuộn mượt lên đầu trang khi đổi SP
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
   }, [id]);
 
   const handleDecrease = () => quantity > 1 && setQuantity(quantity - 1);
@@ -67,7 +61,7 @@ export default function ProductDetail() {
     try {
       await cartApi.addToCart(product.id, quantity);
       window.dispatchEvent(new Event('cartUpdated'));
-      alert(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
+      alert(`☕ Đã thêm ${quantity} ly vào giỏ hàng!`);
     } catch (error) {
       alert("Lỗi: " + error.message);
     }
@@ -84,60 +78,67 @@ export default function ProductDetail() {
   };
 
   if (loading) return (
-    <div className="flex h-[60vh] items-center justify-center">
-      <div className="h-12 w-12 animate-spin rounded-full border-4 border-brand-500 border-t-transparent"></div>
+    <div className="flex h-[60vh] flex-col items-center justify-center space-y-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#5C4033] border-t-transparent"></div>
+        <p className="font-bold text-[#5C4033]">Đang pha chế dữ liệu...</p>
     </div>
   );
 
-  if (!product) return <div className="py-20 text-center font-bold text-red-500">Sản phẩm không tồn tại!</div>;
+  if (!product) return (
+    <div className="py-20 text-center font-bold text-red-500 flex flex-col items-center justify-center">
+        <MdLocalCafe size={64} className="mb-4 text-gray-300" />
+        <p>Món uống này không tồn tại hoặc đã hết hàng!</p>
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-6xl animate-fade-in pb-20">
       {/* Breadcrumb / Back button */}
-      <Link to="/" className="group mb-8 inline-flex items-center text-sm font-bold text-gray-500 transition hover:text-brand-500 dark:text-gray-400">
+      <Link to="/" className="group mb-8 inline-flex items-center text-sm font-bold text-gray-500 transition hover:text-amber-600 dark:text-gray-400">
         <MdKeyboardArrowLeft className="mr-1 h-5 w-5 transition-transform group-hover:-translate-x-1" /> 
-        Trở lại danh sách sản phẩm
+        Trở lại Menu
       </Link>
 
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
         {/* CỘT TRÁI: GALLERY ẢNH */}
-        <div className="relative overflow-hidden rounded-[40px] bg-white shadow-xl shadow-gray-200/50 dark:bg-navy-800 dark:shadow-none">
+        <div className="relative overflow-hidden rounded-[40px] bg-white shadow-2xl shadow-amber-900/10 border border-orange-50 dark:bg-navy-800 dark:border-navy-700">
           <img
             src={getImageUrl(product.imageUrl)}
             alt={product.productName}
-            className="h-full w-full object-cover transition-transform duration-500 hover:scale-110 aspect-square"
+            className="h-full w-full object-cover transition-transform duration-700 hover:scale-110 aspect-square"
           />
           {product.availability <= 5 && product.availability > 0 && (
-            <div className="absolute top-6 left-6 rounded-full bg-orange-500 px-4 py-1.5 text-xs font-black text-white shadow-lg uppercase tracking-wider">
-              Sắp hết hàng
+            <div className="absolute top-6 left-6 rounded-full bg-red-500 px-5 py-2 text-xs font-black text-white shadow-lg uppercase tracking-widest">
+              Sắp hết nguyên liệu
             </div>
           )}
         </div>
 
         {/* CỘT PHẢI: THÔNG TIN CHI TIẾT */}
         <div className="flex flex-col py-2">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="rounded-lg bg-brand-100 px-3 py-1 text-xs font-bold text-brand-600 dark:bg-brand-500/20 dark:text-brand-400 uppercase tracking-widest">
-              {product.category?.categoryName || "Premium"}
+          <div className="mb-3 flex items-center gap-2">
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-xs font-black text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-widest">
+              {product.category?.categoryName || "Đồ uống Premium"}
             </span>
           </div>
           
-          <h1 className="text-4xl font-black text-navy-700 dark:text-white lg:text-5xl leading-tight">
+          <h1 className="text-4xl font-black font-serif text-[#5C4033] dark:text-white lg:text-5xl leading-tight">
             {product.productName}
           </h1>
 
           <div className="mt-6 flex items-baseline gap-4">
-            <span className="text-4xl font-black text-brand-500">
-              {product.price?.toLocaleString('vi-VN')} ₫
+            <span className="text-4xl font-black text-[#5C4033] dark:text-amber-400">
+              {product.price?.toLocaleString('vi-VN')} 
+              <span className="text-2xl font-bold text-gray-400 ml-1.5 underline decoration-gray-300">đ</span>
             </span>
-            <span className="text-lg text-gray-400 line-through decoration-red-400">
-              {(product.price * 1.2).toLocaleString('vi-VN')} ₫
+            <span className="text-lg font-medium text-gray-400 line-through decoration-red-400/50">
+              {(product.price * 1.2).toLocaleString('vi-VN')} đ
             </span>
           </div>
 
-          <div className="mt-6 rounded-2xl bg-gray-50 p-4 dark:bg-navy-900/50">
+          <div className="mt-8 rounded-2xl bg-amber-50/50 p-5 border-l-4 border-amber-500 dark:bg-navy-900/50 dark:border-amber-400">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-300 leading-relaxed italic">
-              "{product.discription?.substring(0, 150) || "Một sản phẩm tuyệt vời đến từ bộ sưu tập mới nhất của chúng tôi."}..."
+              "{product.discription?.substring(0, 150) || "Hương vị nguyên bản được pha chế tỉ mỉ từ những nguyên liệu chọn lọc nhất, mang đến cho bạn trải nghiệm tuyệt vời."}..."
             </p>
           </div>
 
@@ -145,26 +146,26 @@ export default function ProductDetail() {
 
           {/* CHỌN SỐ LƯỢNG */}
           <div className="flex items-center gap-6">
-            <span className="text-sm font-black uppercase text-navy-700 dark:text-white">Số lượng</span>
-            <div className="flex items-center rounded-2xl border-2 border-gray-100 bg-white p-1.5 dark:border-navy-700 dark:bg-navy-900">
+            <span className="text-sm font-black uppercase tracking-widest text-[#5C4033] dark:text-white">Số lượng</span>
+            <div className="flex items-center rounded-2xl border-2 border-amber-100 bg-white p-1.5 shadow-sm dark:border-navy-700 dark:bg-navy-900">
               <button 
                 onClick={handleDecrease} 
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold transition hover:bg-gray-100 active:scale-90 dark:text-white dark:hover:bg-white/10"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold text-[#5C4033] transition hover:bg-amber-50 active:scale-90 dark:text-white dark:hover:bg-white/10"
               >
                 -
               </button>
-              <span className="w-12 text-center text-lg font-black text-navy-700 dark:text-white">
+              <span className="w-12 text-center text-lg font-black text-[#5C4033] dark:text-white">
                 {quantity}
               </span>
               <button 
                 onClick={handleIncrease} 
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold transition hover:bg-gray-100 active:scale-90 dark:text-white dark:hover:bg-white/10"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold text-[#5C4033] transition hover:bg-amber-50 active:scale-90 dark:text-white dark:hover:bg-white/10"
               >
                 +
               </button>
             </div>
-            <span className="text-xs font-bold text-gray-400">
-              {product.availability} sản phẩm có sẵn
+            <span className="text-xs font-bold text-amber-600/70">
+              Chỉ còn {product.availability} ly hôm nay
             </span>
           </div>
 
@@ -173,50 +174,52 @@ export default function ProductDetail() {
             <button
               onClick={handleAddToCart}
               disabled={product.availability === 0}
-              className="flex flex-[1.5] items-center justify-center gap-3 rounded-2xl border-2 border-brand-500 py-4 text-base font-black text-brand-500 transition-all hover:bg-brand-500 hover:text-white disabled:border-gray-300 disabled:text-gray-300 shadow-xl shadow-brand-500/10"
+              className="flex flex-[1.5] items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-white py-4 text-base font-black text-amber-600 transition-all hover:bg-amber-500 hover:text-white disabled:border-gray-300 disabled:text-gray-300 shadow-xl shadow-amber-500/10 dark:bg-navy-800"
             >
               <MdAddShoppingCart size={24} /> THÊM VÀO GIỎ
             </button>
             <button
               onClick={handleBuyNow}
               disabled={product.availability === 0}
-              className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-navy-700 py-4 text-base font-black text-white transition-all hover:bg-navy-800 active:scale-95 disabled:bg-gray-300 shadow-xl shadow-navy-700/20 dark:bg-brand-400 dark:hover:bg-brand-300"
+              className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#5C4033] py-4 text-base font-black text-white transition-all hover:bg-[#3e2723] active:scale-95 disabled:bg-gray-300 shadow-xl shadow-[#5C4033]/20"
             >
-              <MdFlashOn size={24} className="text-yellow-400 group-hover:animate-pulse" /> MUA NGAY
+              <MdFlashOn size={24} className="text-amber-400 group-hover:animate-pulse" /> MUA NGAY
             </button>
           </div>
 
-          {/* CHÍNH SÁCH CAM KẾT */}
+          {/* CHÍNH SÁCH CAM KẾT THEO F&B */}
           <div className="mt-10 grid grid-cols-3 gap-4 border-t border-gray-100 pt-8 dark:border-white/10">
-            <div className="flex flex-col items-center text-center">
-              <MdVerifiedUser className="mb-2 text-2xl text-green-500" />
-              <span className="text-[10px] font-bold uppercase text-gray-400">Chính hãng 100%</span>
+            <div className="flex flex-col items-center text-center group cursor-default">
+              <MdEco className="mb-2 text-3xl text-green-500 transition-transform group-hover:scale-110 group-hover:-translate-y-1" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">100% Hữu cơ</span>
             </div>
-            <div className="flex flex-col items-center text-center border-x border-gray-100 dark:border-white/10 px-2">
-              <MdLocalShipping className="mb-2 text-2xl text-blue-500" />
-              <span className="text-[10px] font-bold uppercase text-gray-400">Giao hàng 24h</span>
+            <div className="flex flex-col items-center text-center border-x border-gray-100 dark:border-white/10 px-2 group cursor-default">
+              <MdLocalShipping className="mb-2 text-3xl text-amber-500 transition-transform group-hover:scale-110 group-hover:-translate-y-1" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Giao hỏa tốc</span>
             </div>
-            <div className="flex flex-col items-center text-center">
-              <MdAssignmentReturn className="mb-2 text-2xl text-orange-500" />
-              <span className="text-[10px] font-bold uppercase text-gray-400">Đổi trả 7 ngày</span>
+            <div className="flex flex-col items-center text-center group cursor-default">
+              <MdLocalCafe className="mb-2 text-3xl text-[#5C4033] transition-transform group-hover:scale-110 group-hover:-translate-y-1 dark:text-amber-200" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Pha thủ công</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* TỔNG QUAN MÔ TẢ CHI TIẾT */}
-      <div className="mt-16 overflow-hidden rounded-[30px] bg-white shadow-sm dark:bg-navy-800">
-        <div className="border-b border-gray-50 px-8 py-6 dark:border-white/5">
-          <h2 className="text-2xl font-black text-navy-700 dark:text-white">Mô tả sản phẩm</h2>
+      <div className="mt-16 overflow-hidden rounded-[40px] bg-white shadow-sm border border-orange-50 dark:bg-navy-800 dark:border-navy-700">
+        <div className="border-b border-gray-50 px-10 py-8 dark:border-white/5 bg-amber-50/30 dark:bg-navy-900/30">
+          <h2 className="text-2xl font-black font-serif text-[#5C4033] dark:text-white flex items-center gap-3">
+            <MdLocalCafe className="text-amber-500"/> Câu chuyện hương vị
+          </h2>
         </div>
-        <div className="p-8">
-          <div className="prose max-w-none text-gray-600 dark:text-gray-300 leading-loose">
+        <div className="p-10">
+          <div className="prose max-w-none text-gray-600 dark:text-gray-300 leading-loose text-lg">
             {product.discription ? (
               product.discription.split('\n').map((line, index) => (
-                <p key={index} className="mb-4">{line}</p>
+                <p key={index} className="mb-5">{line}</p>
               ))
             ) : (
-              <p className="italic opacity-50">Sản phẩm này hiện đang được cập nhật thêm thông tin chi tiết từ nhà cung cấp.</p>
+              <p className="italic opacity-50">Sản phẩm này hiện đang được các Barista của chúng tôi cập nhật thêm thông tin chi tiết.</p>
             )}
           </div>
         </div>
@@ -224,11 +227,14 @@ export default function ProductDetail() {
 
       {/* 🌟 KHU VỰC SẢN PHẨM TƯƠNG TỰ */}
       {relatedProducts.length > 0 && (
-        <div className="mt-16">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-2xl font-black text-navy-700 dark:text-white border-l-4 border-brand-500 pl-4">
-              Sản phẩm tương tự
-            </h2>
+        <div className="mt-20">
+          <div className="mb-10 flex items-center justify-between text-center w-full">
+            <div className="w-full">
+              <p className="text-sm font-bold text-amber-500 uppercase tracking-widest mb-2">Thưởng thức thêm</p>
+              <h2 className="text-3xl font-black font-serif text-[#5C4033] dark:text-white">
+                Gợi ý cho bạn
+              </h2>
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:gap-6">
@@ -236,27 +242,30 @@ export default function ProductDetail() {
               <Link 
                 key={item.id} 
                 to={`/product/${item.id}`} 
-                className="group flex flex-col overflow-hidden rounded-[24px] bg-white p-3 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl dark:bg-navy-800"
+                className="group flex flex-col overflow-hidden rounded-[24px] bg-white p-3 shadow-sm border border-orange-50/80 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-500/10 hover:border-amber-200 dark:bg-navy-800 dark:border-navy-700"
               >
-                <div className="relative aspect-square overflow-hidden rounded-[16px] bg-gray-50 dark:bg-navy-900">
+                <div className="relative aspect-square overflow-hidden rounded-[18px] bg-gray-50 dark:bg-navy-900">
                   <img 
                     src={getImageUrl(item.imageUrl)} 
                     alt={item.productName} 
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" 
                   />
+                  {/* Lớp phủ mờ sang trọng khi hover */}
+                  <div className="absolute inset-0 bg-black/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                  
                   {/* Nút giỏ hàng ảo bay lên khi hover */}
-                  <div className="absolute bottom-3 right-3 translate-y-10 rounded-xl bg-white/90 p-2 text-brand-500 opacity-0 shadow-lg backdrop-blur transition-all group-hover:translate-y-0 group-hover:opacity-100 dark:bg-navy-800/90">
-                    <MdAddShoppingCart size={20} />
+                  <div className="absolute bottom-3 right-3 translate-y-10 rounded-full bg-white p-3 text-amber-500 opacity-0 shadow-lg transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-amber-500 hover:text-white dark:bg-navy-800">
+                    <MdAddShoppingCart size={22} />
                   </div>
                 </div>
                 
                 <div className="flex flex-1 flex-col justify-between pt-4 pb-2 px-2">
-                  <h3 className="text-sm font-bold text-navy-700 line-clamp-2 transition-colors group-hover:text-brand-500 dark:text-white leading-snug">
+                  <h3 className="text-base font-bold font-serif text-[#5C4033] line-clamp-2 transition-colors group-hover:text-amber-600 dark:text-white leading-snug">
                     {item.productName}
                   </h3>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-lg font-black text-brand-500">
-                      {item.price?.toLocaleString('vi-VN')} ₫
+                    <span className="text-lg font-black text-[#5C4033] dark:text-amber-400">
+                      {item.price?.toLocaleString('vi-VN')} <span className="text-sm font-bold text-gray-400 underline decoration-gray-300">đ</span>
                     </span>
                   </div>
                 </div>

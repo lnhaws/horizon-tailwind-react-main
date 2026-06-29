@@ -45,48 +45,49 @@ export default function StoreCheckout() {
       setShippingInfo({ ...shippingInfo, [e.target.name]: e.target.value });
   };
 
-  // 🌟 HÀM ĐÃ ĐƯỢC TÍCH HỢP LUỒNG VNPAY
-  const handlePlaceOrder = async (e) => {
+ const handlePlaceOrder = async (e) => {
       e.preventDefault(); 
       const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+      
+      if (!currentUser || !currentUser.id) {
+          alert("Vui lòng đăng nhập để đặt hàng!");
+          navigate("/auth/sign-in");
+          return;
+      }
+
       setLoading(true);
       
       const orderPayload = {
           selectedProductIds: selectedItemIds,
           fullName: shippingInfo.fullName,
-          phone: shippingInfo.phone,
           address: shippingInfo.address,
-          note: shippingInfo.note,
+          phoneNumber: shippingInfo.phone, // Đã đổi tên cho khớp DTO Backend
+          notes: shippingInfo.note,
           paymentMethod: paymentMethod
       };
       
       try {
-          // 1. GỌI API LƯU ĐƠN HÀNG TRƯỚC
+          // 1. Tạo đơn hàng
           const response = await orderApi.createOrder(currentUser.id, orderPayload);
           const newOrderId = response.id; 
+          const orderTotal = response.total; // Backend đã tính sẵn total
           
           window.dispatchEvent(new Event('cartUpdated'));
           
-          // 2. KIỂM TRA PHƯƠNG THỨC THANH TOÁN ĐỂ RẼ NHÁNH
+          // 2. Chuyển hướng VNPay hoặc Báo thành công
           if (paymentMethod === "VNPAY") {
-              alert("Đơn hàng đã lưu! Hệ thống đang chuyển hướng đến cổng thanh toán VNPay...");
-              
-              // Gọi API lấy link VNPay
-              const paymentUrl = await paymentApi.createVnPayUrl(newOrderId, totalAmount);
-              
+              // Gọi API tạo link VNPay
+              const paymentUrl = await paymentApi.createVnPayUrl(newOrderId, orderTotal);
               if (paymentUrl) {
-                  // Chuyển hướng thẳng sang trang của VNPay
-                  window.location.href = paymentUrl; 
+                  window.location.href = paymentUrl; // Chuyển sang cổng VNPay
               } else {
-                  alert("Lỗi: Không lấy được đường dẫn thanh toán từ hệ thống!");
+                  alert("Lỗi: Không lấy được đường dẫn thanh toán!");
                   navigate("/"); 
               }
           } else {
-              // 3. NẾU LÀ COD THÌ XONG LUÔN
-              alert(`🎉 ĐẶT HÀNG THÀNH CÔNG!\nMã đơn hàng của bạn là: ${newOrderId}\nCảm ơn bạn đã mua sắm tại RainbowForest!`);
+              alert(`🎉 ĐẶT HÀNG THÀNH CÔNG!\nMã đơn hàng của bạn là: #${newOrderId}\nCảm ơn bạn đã mua sắm!`);
               navigate("/"); 
           }
-          
       } catch (error) {
           console.error("Lỗi đặt hàng:", error);
           alert("Có lỗi xảy ra khi đặt hàng. Vui lòng kiểm tra lại hệ thống!");

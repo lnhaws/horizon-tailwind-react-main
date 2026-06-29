@@ -1,17 +1,14 @@
-// src/api/cartApi.js
 import axiosClient from './axiosClient';
 
-// Hàm lấy Cart-Id từ LocalStorage, nếu chưa có thì tự tạo 1 dãy số ngẫu nhiên
 const getCartId = () => {
     let cartId = localStorage.getItem('cartId');
     if (!cartId) {
-        cartId = Date.now().toString(); // Tạo ID dựa trên thời gian thực
+        cartId = Date.now().toString(); 
         localStorage.setItem('cartId', cartId);
     }
     return cartId;
 };
 
-// Cổng của Order Service trên Gateway là /shop/
 const BASE_URL = '/api/shop/cart';
 
 const cartApi = {
@@ -22,7 +19,11 @@ const cartApi = {
         axiosClient.post(`${BASE_URL}?productId=${productId}&quantity=${quantity}`, null, { headers: { 'Cart-Id': getCartId() } }),
         
     removeFromCart: (productId) => 
-        axiosClient.delete(`${BASE_URL}?productId=${productId}`, { headers: { 'Cart-Id': getCartId() } })
+        axiosClient.delete(`${BASE_URL}?productId=${productId}`, { headers: { 'Cart-Id': getCartId() } }),
+        
+    // HÀM MỚI: Khớp chính xác với @PostMapping("/cart/merge") của Backend
+    mergeCart: (guestCartId, userCartId) => 
+        axiosClient.post(`${BASE_URL}/merge?guestCartId=${guestCartId}&userCartId=${userCartId}`)
 };
 
 export default cartApi;
