@@ -14,7 +14,11 @@ const orderApi = {
     },
 
     getAllOrders: () => axiosClient.get('/api/shop/orders'),
-    updateOrderStatus: (orderId, status) => axiosClient.put(`/api/shop/order/${orderId}/status?status=${status}`),
+    
+    getUserOrders: (userId) => axiosClient.get(`/api/shop/order/user/${userId}`),
+
+    updateOrderStatus: (orderId, status) => axiosClient.put(`/api/shop/order/${orderId}/status`, { status: status }),
+    
     getOrderDetails: (orderId) => axiosClient.get(`/api/shop/order/details/${orderId}`)
 };
 

@@ -17,6 +17,7 @@ export function SidebarLinks(props) {
 
   const createLinks = (routes) => {
     return routes.map((route, index) => {
+      if (route.name === "Đăng nhập") return null;
       if (
         route.layout === "/admin" ||
         route.layout === "/auth" ||

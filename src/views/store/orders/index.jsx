@@ -41,16 +41,34 @@ export default function StoreOrders() {
   if (loading) {
     return (
       <div className="flex h-[50vh] flex-col items-center justify-center space-y-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#5C4033] border-t-transparent"></div>
-          <p className="font-bold text-[#5C4033]">Đang lấy hóa đơn...</p>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-amber-200 border-t-[#5C4033]"></div>
+        <p className="font-bold text-[#5C4033]">Đang lấy hóa đơn...</p>
       </div>
     );
   }
+  const handleCancelOrder = async (orderId) => {
+    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không?")) {
+      try {
+        await orderApi.updateOrderStatus(orderId, "CANCELLED");
+        alert("Đã hủy đơn hàng thành công!");
+
+        // Cập nhật lại state orders để giao diện đổi màu ngay lập tức
+        setOrders(prevOrders =>
+          prevOrders.map(order =>
+            order.id === orderId ? { ...order, status: "CANCELLED" } : order
+          )
+        );
+      } catch (error) {
+        console.error("Lỗi khi hủy đơn:", error);
+        alert("Không thể hủy đơn hàng lúc này!");
+      }
+    }
+  };
 
   return (
     <div className="mx-auto max-w-5xl animate-fade-in pb-10">
       <div className="mb-8 flex items-center justify-between border-b border-gray-100 pb-4 dark:border-navy-700">
-        <h1 className="text-3xl font-black font-serif text-[#5C4033] dark:text-white flex items-center gap-3">
+        <h1 className="text-3xl font-black text-[#5C4033] dark:text-white flex items-center gap-3">
           <MdOutlineReceipt className="text-amber-500" size={32} /> Lịch sử Đơn hàng
         </h1>
       </div>
@@ -58,7 +76,7 @@ export default function StoreOrders() {
       {orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[30px] bg-white py-24 shadow-sm border border-orange-50 dark:bg-navy-800 dark:border-navy-700">
           <MdLocalCafe className="mb-4 text-7xl text-amber-100 dark:text-navy-600" />
-          <p className="text-2xl font-serif font-black text-[#5C4033] dark:text-white">Bạn chưa có đơn hàng nào.</p>
+          <p className="text-2xl font-black text-[#5C4033] dark:text-white">Bạn chưa có đơn hàng nào.</p>
           <p className="mt-2 text-gray-500">Hãy chọn cho mình một ly nước ưng ý nhé!</p>
           <Link to="/" className="mt-6 rounded-full bg-amber-500 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-amber-500/30 transition hover:bg-amber-400 hover:scale-105 active:scale-95">
             KHÁM PHÁ MENU
@@ -68,7 +86,7 @@ export default function StoreOrders() {
         <div className="flex flex-col gap-6">
           {orders.map((order) => (
             <div key={order.id} className="rounded-[24px] bg-white p-6 md:p-8 shadow-sm border border-orange-50 transition-all hover:shadow-xl hover:shadow-amber-900/5 dark:border-navy-700 dark:bg-navy-800">
-              
+
               {/* Header của đơn hàng */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-4 mb-5 gap-3 dark:border-navy-700">
                 <div className="flex items-center gap-4">
@@ -76,11 +94,10 @@ export default function StoreOrders() {
                   <span className="h-1 w-1 rounded-full bg-gray-300"></span>
                   <span className="text-sm font-medium text-gray-500">{order.orderedDate}</span>
                 </div>
-                <span className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider ${
-                    order.status === 'PAID' ? 'bg-green-100 text-green-600' : 
-                    order.status === 'CANCELLED' ? 'bg-red-100 text-red-600' : 
-                    'bg-amber-100 text-amber-700'
-                }`}>
+                <span className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider ${order.status === 'PAID' ? 'bg-green-100 text-green-600' :
+                    order.status === 'CANCELLED' ? 'bg-red-100 text-red-600' :
+                      'bg-amber-100 text-amber-700'
+                  }`}>
                   {order.status || 'Chờ xử lý'}
                 </span>
               </div>
@@ -90,14 +107,14 @@ export default function StoreOrders() {
                 {order.items && order.items.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-5">
                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[16px] border border-gray-50 bg-gray-50 dark:border-navy-700 dark:bg-navy-900">
-                      <img 
-                        src={getImageUrl(item.product?.imageUrl)} 
-                        alt="sp" 
-                        className="h-full w-full object-cover" 
+                      <img
+                        src={getImageUrl(item.product?.imageUrl)}
+                        alt="sp"
+                        className="h-full w-full object-cover"
                       />
                     </div>
                     <div className="flex flex-1 flex-col">
-                      <span className="text-lg font-bold font-serif text-[#5C4033] dark:text-white line-clamp-1">
+                      <span className="text-lg font-bold text-[#5C4033] dark:text-white line-clamp-1">
                         {item.product?.productName || "Sản phẩm không xác định"}
                       </span>
                       <span className="text-sm font-bold text-gray-400 mt-1">Số lượng: x{item.quantity}</span>
@@ -119,11 +136,26 @@ export default function StoreOrders() {
                     {order.paymentMethod === 'VNPAY' ? 'Thẻ / VNPay' : 'Thanh toán khi nhận hàng (COD)'}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-right">
-                  <span className="text-sm font-bold uppercase text-gray-500 dark:text-gray-300">Tổng cộng:</span>
-                  <span className="text-2xl font-black text-amber-600">
-                    {order.total ? order.total.toLocaleString('vi-VN') : 0} <span className="text-base text-gray-400 underline">đ</span>
-                  </span>
+
+                {/* 🌟 ĐÃ FIX: Gom nút Hủy đơn và Tổng tiền vào một khối bên phải */}
+                <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
+
+                  {/* Nút Hủy Đơn chỉ hiện ra nếu status là PENDING */}
+                  {order.status === 'PENDING' && (
+                    <button
+                      onClick={() => handleCancelOrder(order.id)}
+                      className="rounded-full border border-red-500 bg-white px-4 py-1.5 text-sm font-bold text-red-500 transition hover:bg-red-50 hover:shadow-md dark:bg-navy-800"
+                    >
+                      Hủy đơn hàng
+                    </button>
+                  )}
+
+                  <div className="flex items-center gap-3 text-right border-l-0 sm:border-l sm:border-gray-200 sm:pl-4 dark:border-navy-600">
+                    <span className="text-sm font-bold uppercase text-gray-500 dark:text-gray-300">Tổng cộng:</span>
+                    <span className="text-2xl font-black text-amber-600">
+                      {order.total ? order.total.toLocaleString('vi-VN') : 0} <span className="text-base text-gray-400 underline">đ</span>
+                    </span>
+                  </div>
                 </div>
               </div>
 

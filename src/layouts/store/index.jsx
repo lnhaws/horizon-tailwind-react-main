@@ -8,6 +8,7 @@ import StoreCheckout from "views/store/checkout";
 import PaymentReturn from "views/store/payment-return";
 import StoreOrders from "views/store/orders"; 
 import UserProfile from "views/store/profile"; 
+import Collections from "views/store/collections"; 
 import StoreFooter from "components/footer/StoreFooter";
 import { 
   MdShoppingCart, 
@@ -45,7 +46,6 @@ export default function StoreLayout() {
   const fetchCategories = async () => {
     try {
       const catData = await categoryApi.getAllCategories();
-      // 🌟 BỌC THÉP LỚP 1: Ép kiểu mảng
       if (Array.isArray(catData)) {
           setCategories(catData);
       } else {
@@ -53,7 +53,7 @@ export default function StoreLayout() {
       }
     } catch (error) {
       console.error("Lỗi tải danh mục:", error);
-      setCategories([]); // Nếu lỗi mạng, ép về mảng rỗng luôn
+      setCategories([]); 
     }
   };
 
@@ -63,8 +63,14 @@ export default function StoreLayout() {
     window.location.href = "/";
   };
 
-  const handleCategoryClick = (categoryId) => {
-    navigate("/", { state: { selectedCategory: categoryId } });
+  // 🌟 HÀM XỬ LÝ TÌM KIẾM MỚI (Bắt sự kiện Enter và đẩy sang trang Collections)
+  const handleSearchSubmit = (e) => {
+    e.preventDefault(); 
+    if (searchTerm.trim()) {
+      navigate(`/collections?search=${encodeURIComponent(searchTerm.trim())}`);
+    } else {
+      navigate(`/collections`);
+    }
   };
 
   useEffect(() => {
@@ -94,31 +100,38 @@ export default function StoreLayout() {
               <div className="absolute left-0 top-full h-4 w-full"></div>
 
               <div className="absolute left-0 top-[calc(100%+0.5rem)] invisible w-56 origin-top-left translate-y-2 flex-col rounded-[20px] bg-white p-2 shadow-xl shadow-amber-900/5 ring-1 ring-gray-100 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 dark:bg-navy-800 dark:ring-white/10 z-[100]">
-                <button
-                  onClick={() => handleCategoryClick("ALL")}
-                  className="w-full text-left rounded-xl px-4 py-2.5 text-sm font-bold text-[#5C4033] transition-colors hover:bg-amber-50 hover:text-amber-600 dark:text-white dark:hover:bg-white/10"
+                
+                {/* 🌟 ĐÃ FIX: Dùng thẻ Link trỏ thẳng sang /collections */}
+                <Link
+                  to="/collections"
+                  className="block w-full text-left rounded-xl px-4 py-2.5 text-sm font-bold text-[#5C4033] transition-colors hover:bg-amber-50 hover:text-amber-600 dark:text-white dark:hover:bg-white/10"
                 >
                   Tất cả thức uống
-                </button>
+                </Link>
                 <div className="my-1 h-px w-full bg-gray-100 dark:bg-white/5"></div>
                 
-                {/* 🌟 BỌC THÉP LỚP 2: Chắc chắn là mảng mới map() */}
                 {(Array.isArray(categories) ? categories : []).filter(cat => cat.active === 1).map((cat) => (
-                  <button
+                  <Link
                     key={cat.id}
-                    onClick={() => handleCategoryClick(cat.id)}
-                    className="w-full text-left rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-amber-50 hover:text-amber-600 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
+                    to={`/collections?category=${cat.id}`}
+                    className="block w-full text-left rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-amber-50 hover:text-amber-600 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
                   >
                     {cat.categoryName}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6">
-            <div className="hidden sm:flex items-center rounded-full border border-gray-200 bg-white px-4 py-2 transition-all focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 dark:border-navy-700 dark:bg-navy-900 dark:text-white">
-              <MdSearch className="h-5 w-5 text-gray-400" />
+            {/* 🌟 ĐÃ FIX: Bao bọc ô input bằng form để bắt sự kiện Enter */}
+            <form 
+              onSubmit={handleSearchSubmit} 
+              className="hidden sm:flex items-center rounded-full border border-gray-200 bg-white px-4 py-2 transition-all focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 dark:border-navy-700 dark:bg-navy-900 dark:text-white"
+            >
+              <button type="submit">
+                <MdSearch className="h-5 w-5 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer" />
+              </button>
               <input
                 type="text"
                 placeholder="Tìm kiếm món uống..."
@@ -126,7 +139,7 @@ export default function StoreLayout() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="ml-2 w-48 bg-transparent text-sm font-medium text-[#5C4033] outline-none placeholder:text-gray-400 lg:w-64 dark:text-white dark:placeholder:text-gray-500"
               />
-            </div>
+            </form>
 
             <Link to="/cart" className="relative flex items-center justify-center rounded-full bg-amber-50 p-2.5 text-amber-600 transition-all hover:bg-amber-500 hover:text-white hover:scale-105 active:scale-95 dark:bg-navy-900 dark:text-white dark:hover:bg-amber-500">
               <MdShoppingCart className="h-[22px] w-[22px]" />
@@ -197,7 +210,8 @@ export default function StoreLayout() {
       
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Routes>
-          <Route path="/" element={<StoreHome searchTerm={searchTerm} />} />
+          <Route path="/" element={<StoreHome />} />
+          <Route path="collections" element={<Collections />} />
           <Route path="product/:id" element={<ProductDetail />} />
           <Route path="cart" element={<StoreCart />} />
           <Route path="checkout" element={<StoreCheckout />} />

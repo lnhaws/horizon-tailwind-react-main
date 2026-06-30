@@ -16,10 +16,19 @@ export default function StoreCheckout() {
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("COD");
   
+  // 🌟 1. LẤY THÔNG TIN USER TỪ LOCALSTORAGE ĐỂ TỰ ĐỘNG ĐIỀN
+  const currentUserStr = localStorage.getItem("currentUser");
+  const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+  const userDetails = currentUser?.userDetails || {};
+
+  const defaultFullName = [userDetails.lastName, userDetails.firstName].filter(Boolean).join(" ");
+  const defaultAddress = [userDetails.streetNumber, userDetails.street, userDetails.locality].filter(Boolean).join(", ");
+  
+  // 🌟 2. GẮN DỮ LIỆU MẶC ĐỊNH VÀO STATE
   const [shippingInfo, setShippingInfo] = useState({
-      fullName: "",
-      phone: "",
-      address: "",
+      fullName: defaultFullName || "",
+      phone: userDetails.phoneNumber || "",
+      address: defaultAddress || "",
       note: ""
   });
 
@@ -45,9 +54,8 @@ export default function StoreCheckout() {
       setShippingInfo({ ...shippingInfo, [e.target.name]: e.target.value });
   };
 
- const handlePlaceOrder = async (e) => {
+  const handlePlaceOrder = async (e) => {
       e.preventDefault(); 
-      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
       
       if (!currentUser || !currentUser.id) {
           alert("Vui lòng đăng nhập để đặt hàng!");
@@ -61,7 +69,7 @@ export default function StoreCheckout() {
           selectedProductIds: selectedItemIds,
           fullName: shippingInfo.fullName,
           address: shippingInfo.address,
-          phoneNumber: shippingInfo.phone, // Đã đổi tên cho khớp DTO Backend
+          phoneNumber: shippingInfo.phone, 
           notes: shippingInfo.note,
           paymentMethod: paymentMethod
       };
@@ -70,23 +78,22 @@ export default function StoreCheckout() {
           // 1. Tạo đơn hàng
           const response = await orderApi.createOrder(currentUser.id, orderPayload);
           const newOrderId = response.id; 
-          const orderTotal = response.total; // Backend đã tính sẵn total
+          const orderTotal = response.total; 
           
           window.dispatchEvent(new Event('cartUpdated'));
           
           // 2. Chuyển hướng VNPay hoặc Báo thành công
           if (paymentMethod === "VNPAY") {
-              // Gọi API tạo link VNPay
               const paymentUrl = await paymentApi.createVnPayUrl(newOrderId, orderTotal);
               if (paymentUrl) {
-                  window.location.href = paymentUrl; // Chuyển sang cổng VNPay
+                  window.location.href = paymentUrl; 
               } else {
                   alert("Lỗi: Không lấy được đường dẫn thanh toán!");
                   navigate("/"); 
               }
           } else {
               alert(`🎉 ĐẶT HÀNG THÀNH CÔNG!\nMã đơn hàng của bạn là: #${newOrderId}\nCảm ơn bạn đã mua sắm!`);
-              navigate("/"); 
+              navigate("/orders"); // 🌟 Tui đổi nhẹ chỗ này: Đặt xong thì cho bay thẳng sang trang Lịch sử đơn hàng luôn cho xịn
           }
       } catch (error) {
           console.error("Lỗi đặt hàng:", error);
@@ -119,21 +126,22 @@ export default function StoreCheckout() {
                   </div>
                   
                   <form id="checkout-form" onSubmit={handlePlaceOrder} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* 🌟 3. THÊM THUỘC TÍNH value={shippingInfo.xxx} VÀO CÁC INPUT ĐỂ NÓ HIỆN CHỮ LÊN */}
                       <div>
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Họ và tên *</label>
-                          <input type="text" name="fullName" required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="Nhập họ và tên" />
+                          <input type="text" name="fullName" value={shippingInfo.fullName} required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="Nhập họ và tên" />
                       </div>
                       <div>
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Số điện thoại *</label>
-                          <input type="tel" name="phone" required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="VD: 0912345678" />
+                          <input type="tel" name="phone" value={shippingInfo.phone} required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="VD: 0912345678" />
                       </div>
                       <div className="md:col-span-2">
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Địa chỉ giao hàng chi tiết *</label>
-                          <input type="text" name="address" required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/TP" />
+                          <input type="text" name="address" value={shippingInfo.address} required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/TP" />
                       </div>
                       <div className="md:col-span-2">
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Ghi chú cho shipper (Tùy chọn)</label>
-                          <textarea name="note" rows="2" onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="VD: Gọi trước khi giao..."></textarea>
+                          <textarea name="note" value={shippingInfo.note} rows="2" onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="VD: Gọi trước khi giao..."></textarea>
                       </div>
                   </form>
               </div>

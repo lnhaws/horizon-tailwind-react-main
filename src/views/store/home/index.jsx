@@ -4,7 +4,8 @@ import { useLocation } from "react-router-dom";
 import productApi from "api/productApi";
 import categoryApi from "api/categoryApi";
 import cartApi from "api/cartApi";
-import { MdLocalCafe, MdEco, MdLocalShipping } from "react-icons/md"; // 🌟 Import thêm icon trang trí
+import LoadingSpinner from "components/loading/LoadingSpinner";
+import { MdLocalCafe, MdEco, MdLocalShipping } from "react-icons/md";
 
 import ProductGrid from "./components/ProductGrid";
 
@@ -64,14 +65,7 @@ export default function StoreHome({ searchTerm = "" }) {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex h-[60vh] flex-col items-center justify-center space-y-4">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#5C4033] border-t-transparent"></div>
-                <p className="font-bold text-[#5C4033]">Đang pha chế dữ liệu...</p>
-            </div>
-        );
-    }
+  if (loading) return <LoadingSpinner text="Đang pha chế dữ liệu..." />;
 
     return (
         <div className="animate-fade-in pb-12">
@@ -88,7 +82,7 @@ export default function StoreHome({ searchTerm = "" }) {
                 
                 {/* Nội dung Banner */}
                 <div className="relative z-10 flex flex-col items-center text-center px-4">
-                    <h1 className="mb-4 text-4xl font-black text-white md:text-5xl lg:text-6xl drop-shadow-lg font-serif">
+                    <h1 className="mb-4 text-4xl font-black text-white md:text-5xl lg:text-6xl drop-shadow-lg">
                         Hương Vị <span className="text-amber-400">Nguyên Bản</span>
                     </h1>
                     <p className="mb-8 max-w-2xl text-lg font-medium text-gray-200 md:text-xl">
@@ -133,7 +127,7 @@ export default function StoreHome({ searchTerm = "" }) {
             {/* 🌟 3. TIÊU ĐỀ LƯỚI SẢN PHẨM (MENU) */}
             <div className="mb-10 text-center">
                 <p className="text-sm font-bold text-amber-500 uppercase tracking-widest mb-1">Our Menu</p>
-                <h2 className="text-3xl font-black text-[#5C4033] dark:text-white capitalize font-serif relative inline-block">
+                <h2 className="text-3xl font-black text-[#5C4033] dark:text-white capitalize relative inline-block">
                     {selectedCategory === "ALL" 
                         ? "Khám Phá Hương Vị" 
                         : categories.find(c => c.id === selectedCategory)?.categoryName || "Sản phẩm"}

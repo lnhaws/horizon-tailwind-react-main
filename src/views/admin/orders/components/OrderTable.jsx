@@ -45,16 +45,19 @@ export default function OrderTable({ tableData, onStatusChange, onViewDetails })
                 </td>
 
                 <td className="min-w-[140px] border-white/0 py-3 pr-4">
+                  <td className="min-w-[140px] border-white/0 py-3 pr-4">
                   <select 
                       className="rounded-lg border border-gray-200 bg-white p-1.5 text-sm font-medium text-navy-700 outline-none transition hover:border-brand-500 dark:bg-navy-700 dark:border-white/10 dark:text-white cursor-pointer"
                       value={order.status}
                       onChange={(e) => onStatusChange(order.id, e.target.value)}
                    >
                      <option value="PENDING">Chờ xử lý</option>
+                     <option value="PAID">Đã thanh toán</option> 
                      <option value="SHIPPING">Đang giao hàng</option>
                      <option value="COMPLETED">Đã hoàn thành</option>
                      <option value="CANCELLED">Hủy đơn</option>
                    </select>
+                </td>
                 </td>
 
                 {/* SỬA CHỖ NÀY: Dùng justify-start để nút dạt về bên trái, ép sát cột trạng thái */}

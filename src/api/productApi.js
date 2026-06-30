@@ -1,6 +1,5 @@
-// src/api/productApi.js
 import axiosClient from './axiosClient';
-import axios from 'axios'; // 🌟 ĐỪNG QUÊN IMPORT THẰNG NÀY ĐỂ DÙNG AXIOS GỐC
+import axios from 'axios'; 
 
 const BASE_URL = '/api/catalog'; 
 
@@ -10,15 +9,15 @@ const productApi = {
     getProductsByCategory: (categoryId) => axiosClient.get(`${BASE_URL}/products?categoryId=${categoryId}`),
     searchProducts: (name) => axiosClient.get(`${BASE_URL}/products?name=${name}`),
 
+    getRelatedProducts: (categoryId, excludeId) => axiosClient.get(`${BASE_URL}/products/category/${categoryId}/related/${excludeId}`),
+
     addProduct: (product) => axiosClient.post(`${BASE_URL}/admin/products`, product),
     updateProduct: (id, product) => axiosClient.put(`${BASE_URL}/admin/products/${id}`, product),
     deleteProduct: (id) => axiosClient.delete(`${BASE_URL}/admin/products/${id}`),
     
-    // 🌟 BẢN FIX "TRÙM CUỐI": TỰ ĐỘNG ÉP MỌI THỂ LOẠI DATA THÀNH FILE CHUẨN
     uploadImage: async (productId, fileObj) => {
         let actualFile = fileObj;
 
-        // BẪY 1: Nếu UI đang truyền vào chuỗi chữ Base64 (Từ chức năng xem trước ảnh)
         if (typeof fileObj === 'string' && fileObj.startsWith('data:image')) {
             const arr = fileObj.split(',');
             const mime = arr[0].match(/:(.*?);/)[1];
@@ -30,20 +29,16 @@ const productApi = {
             }
             actualFile = new File([u8arr], "product_image.jpg", { type: mime });
         } 
-        // BẪY 2: Nếu UI vô tình truyền nguyên cái Sự kiện (Event) của thẻ <input>
         else if (fileObj && fileObj.target && fileObj.target.files) {
             actualFile = fileObj.target.files[0];
         } 
-        // BẪY 3: Nếu dữ liệu bị bọc trong một Mảng (Array)
         else if (Array.isArray(fileObj)) {
             actualFile = fileObj[0];
         }
 
-        // Đóng gói an toàn để gửi đi
         const formData = new FormData();
-        formData.append("image", actualFile); // Backend bắt buộc phải tìm chữ "image" này
+        formData.append("image", actualFile); 
 
-        // Bắn bằng axios gốc (Bỏ qua màng lọc axiosClient để không bị ép Header thành JSON)
         return axios.post(`http://localhost:8900${BASE_URL}/admin/products/${productId}/image`, formData);
     }
 };

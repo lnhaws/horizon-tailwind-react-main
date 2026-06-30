@@ -8,7 +8,7 @@ export default function ProductModal({ isOpen, onClose, onSave, editingProduct, 
     categoryId: '', // Sửa từ category -> categoryId cho khớp với Backend
     price: 0,
     availability: 0,
-    discription: ''
+    description: ''
   });
 
   const [imageFile, setImageFile] = useState(null);
@@ -25,7 +25,7 @@ export default function ProductModal({ isOpen, onClose, onSave, editingProduct, 
         categoryId: editingProduct.categoryId || firstActiveCategory,
         price: editingProduct.price,
         availability: editingProduct.availability,
-        discription: editingProduct.discription || ''
+        description: editingProduct.description || ''
       });
 
       if (editingProduct.imageUrl) {
@@ -40,7 +40,7 @@ export default function ProductModal({ isOpen, onClose, onSave, editingProduct, 
         categoryId: firstActiveCategory, // Gán mặc định danh mục đầu tiên
         price: 0,
         availability: 0,
-        discription: ''
+        description: ''
       });
       setImagePreview(null);
     }
@@ -145,7 +145,7 @@ export default function ProductModal({ isOpen, onClose, onSave, editingProduct, 
 
           <div>
             <label className="text-sm font-bold text-navy-700 dark:text-white">Mô Tả</label>
-            <textarea name="discription" value={formData.discription} onChange={handleChange} rows="3"
+            <textarea name="description" value={formData.description} onChange={handleChange} rows="3"
               className="mt-1 flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm outline-none dark:border-white/10 dark:text-white"></textarea>
           </div>
 

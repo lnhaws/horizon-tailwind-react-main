@@ -51,14 +51,14 @@ export default function UserProfile() {
   return (
     <div className="mx-auto max-w-4xl py-10 animate-fade-in">
       <div className="mb-8">
-        <h1 className="text-3xl font-black font-serif text-[#5C4033] dark:text-white">Thông tin tài khoản</h1>
+        <h1 className="text-3xl font-black text-[#5C4033] dark:text-white">Thông tin tài khoản</h1>
         <p className="text-gray-500 mt-2">Cập nhật địa chỉ và số điện thoại để hệ thống tự động điền khi thanh toán đơn hàng.</p>
       </div>
 
       <form onSubmit={handleUpdateProfile} className="rounded-[30px] bg-white p-8 shadow-xl shadow-amber-900/5 dark:bg-navy-800 border border-orange-50 dark:border-navy-700">
         
         {/* THÔNG TIN CƠ BẢN */}
-        <h2 className="mb-4 text-lg font-bold font-serif text-[#5C4033] dark:text-white border-b border-gray-100 pb-2 flex items-center gap-2 dark:border-white/10">
+        <h2 className="mb-4 text-lg font-bold text-[#5C4033] dark:text-white border-b border-gray-100 pb-2 flex items-center gap-2 dark:border-white/10">
             <MdOutlinePerson className="text-amber-500"/> Thông tin cá nhân
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -81,7 +81,7 @@ export default function UserProfile() {
         </div>
 
         {/* THÔNG TIN ĐỊA CHỈ */}
-        <h2 className="mb-4 text-lg font-bold font-serif text-[#5C4033] dark:text-white border-b border-gray-100 pb-2 flex items-center gap-2 dark:border-white/10">
+        <h2 className="mb-4 text-lg font-bold text-[#5C4033] dark:text-white border-b border-gray-100 pb-2 flex items-center gap-2 dark:border-white/10">
             <MdOutlineLocationOn className="text-amber-500"/> Sổ địa chỉ giao hàng
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

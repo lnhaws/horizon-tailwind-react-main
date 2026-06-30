@@ -10,7 +10,7 @@ export default function ProductGrid({ filteredProducts, categories, handleAddToC
                 <div className="mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-amber-50 text-amber-300 dark:bg-navy-800">
                     <MdLocalCafe size={48} />
                 </div>
-                <p className="text-2xl font-serif font-black text-[#5C4033] dark:text-white mb-2">
+                <p className="text-2xl font-black text-[#5C4033] dark:text-white mb-2">
                     Không tìm thấy món uống nào.
                 </p>
                 <p className="text-base text-gray-500">
@@ -48,7 +48,7 @@ export default function ProductGrid({ filteredProducts, categories, handleAddToC
                             
                             {/* Tên món */}
                             <Link to={`/product/${product.id}`}>
-                                <h3 className="text-lg font-bold font-serif text-[#5C4033] dark:text-white line-clamp-2 transition-colors group-hover:text-amber-600">
+                                <h3 className="text-lg font-bold ftext-[#5C4033] dark:text-white line-clamp-2 transition-colors group-hover:text-amber-600">
                                     {product.productName}
                                 </h3>
                             </Link>
