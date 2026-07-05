@@ -4,14 +4,7 @@ import productApi from "api/productApi";
 import cartApi from "api/cartApi";
 import categoryApi from "api/categoryApi";
 import LoadingSpinner from "components/loading/LoadingSpinner";
-import { 
-  MdAddShoppingCart, 
-  MdKeyboardArrowLeft, 
-  MdEco, 
-  MdLocalShipping, 
-  MdLocalCafe,
-  MdFlashOn
-} from "react-icons/md";
+import { MdAddShoppingCart, MdKeyboardArrowLeft, MdEco, MdLocalShipping, MdLocalCafe, MdFlashOn } from "react-icons/md";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -21,6 +14,9 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [categoryName, setCategoryName] = useState(""); 
+  
+  // 🌟 MỚI: State lưu Biến thể đang chọn
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   const getImageUrl = (url) => {
     if (!url) return "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop";
@@ -38,28 +34,29 @@ export default function ProductDetail() {
         setQuantity(1); 
 
         if (data) {
-            // 🌟 ĐÃ SỬA LỖI HIỆU NĂNG: Lấy đúng 4 sản phẩm bằng API mới, không tải hết kho hàng nữa
+            // 🌟 TỰ ĐỘNG CHỌN BIẾN THỂ RẺ NHẤT MẶC ĐỊNH
+            if (data.variants && data.variants.length > 0) {
+              const sortedVariants = [...data.variants].sort((a, b) => a.price - b.price);
+              data.variants = sortedVariants;
+              setSelectedVariant(sortedVariants[0]);
+            } else {
+              setSelectedVariant(null);
+            }
+
             const currentCatId = data.categoryId || data.category?.id;
             if (currentCatId) {
                 try {
                     const related = await productApi.getRelatedProducts(currentCatId, data.id);
                     setRelatedProducts(related || []);
-                } catch (err) {
-                    console.error("Lỗi tải sản phẩm liên quan", err);
-                }
+                } catch (err) {}
             }
 
-            // Tự động tra cứu tên danh mục
             if (data.categoryId) {
                 try {
                     const categories = await categoryApi.getAllCategories();
                     const matchedCat = categories.find(c => c.id === data.categoryId);
-                    if (matchedCat) {
-                        setCategoryName(matchedCat.categoryName);
-                    }
-                } catch (catError) {
-                    console.error("Lỗi khi tải danh mục", catError);
-                }
+                    if (matchedCat) setCategoryName(matchedCat.categoryName);
+                } catch (catError) {}
             }
         }
       } catch (error) {
@@ -72,14 +69,24 @@ export default function ProductDetail() {
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   }, [id]);
 
+  // 🌟 ĐỒNG BỘ GIÁ, TỒN KHO VÀ ẢNH THEO BIẾN THỂ ĐANG CHỌN
+  const currentPrice = selectedVariant ? selectedVariant.price : (product?.price || 0);
+  const currentAvailability = selectedVariant ? selectedVariant.availability : (product?.availability || 0);
+  const currentImage = (selectedVariant && selectedVariant.imageUrl) ? selectedVariant.imageUrl : product?.imageUrl;
+
   const handleDecrease = () => quantity > 1 && setQuantity(quantity - 1);
-  const handleIncrease = () => quantity < product?.availability && setQuantity(quantity + 1);
+  const handleIncrease = () => quantity < currentAvailability && setQuantity(quantity + 1);
 
   const handleAddToCart = async () => {
     try {
-      await cartApi.addToCart(product.id, quantity);
+      // 🌟 Lấy id của khối lượng đang chọn (nếu có)
+      const variantId = selectedVariant ? selectedVariant.id : null;
+      
+      // Truyền variantId vào giữa productId và quantity
+      await cartApi.addToCart(product.id, variantId, quantity);
+      
       window.dispatchEvent(new Event('cartUpdated'));
-      alert(`☕ Đã thêm ${quantity} ly vào giỏ hàng!`);
+      alert(`☕ Đã thêm ${quantity} gói vào giỏ hàng!`);
     } catch (error) {
       alert("Lỗi: " + error.message);
     }
@@ -87,7 +94,8 @@ export default function ProductDetail() {
 
   const handleBuyNow = async () => {
     try {
-      await cartApi.addToCart(product.id, quantity);
+      const variantId = selectedVariant ? selectedVariant.id : null;
+      await cartApi.addToCart(product.id, variantId, quantity);
       window.dispatchEvent(new Event('cartUpdated'));
       navigate("/checkout", { state: { selectedItemIds: [product.id] } });
     } catch (error) {
@@ -96,101 +104,100 @@ export default function ProductDetail() {
   };
 
   if (loading) return <LoadingSpinner text="Đang pha chế dữ liệu..." />;
-
   if (!product) return (
     <div className="py-20 text-center font-bold text-red-500 flex flex-col items-center justify-center">
         <MdLocalCafe size={64} className="mb-4 text-gray-300" />
-        <p>Món uống này không tồn tại hoặc đã hết hàng!</p>
+        <p>Sản phẩm này không tồn tại hoặc đã hết hàng!</p>
     </div>
   );
 
   return (
     <div className="mx-auto max-w-6xl animate-fade-in pb-20">
-      <Link to="/" className="group mb-8 inline-flex items-center text-sm font-bold text-gray-500 transition hover:text-amber-600 dark:text-gray-400">
-        <MdKeyboardArrowLeft className="mr-1 h-5 w-5 transition-transform group-hover:-translate-x-1" /> 
-        Trở lại Menu
+      <Link to="/" className="group mb-8 inline-flex items-center text-sm font-bold text-gray-500 transition hover:text-amber-600">
+        <MdKeyboardArrowLeft className="mr-1 h-5 w-5 transition-transform group-hover:-translate-x-1" /> Trở lại Menu
       </Link>
 
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-        {/* Gallery */}
-        <div className="relative overflow-hidden rounded-[40px] bg-white shadow-2xl shadow-amber-900/10 border border-orange-50 dark:bg-navy-800 dark:border-navy-700">
-          <img src={getImageUrl(product.imageUrl)} alt={product.productName} className="h-full w-full object-cover transition-transform duration-700 hover:scale-110 aspect-square" />
-          {product.availability <= 5 && product.availability > 0 && (
+        <div className="relative overflow-hidden rounded-[40px] bg-white shadow-2xl border border-orange-50">
+          <img src={getImageUrl(currentImage)} alt={product.productName} className="h-full w-full object-cover transition-transform duration-700 hover:scale-110 aspect-square" />
+          {currentAvailability <= 5 && currentAvailability > 0 && (
             <div className="absolute top-6 left-6 rounded-full bg-red-500 px-5 py-2 text-xs font-black text-white shadow-lg uppercase tracking-widest">
               Sắp hết nguyên liệu
             </div>
           )}
         </div>
 
-        {/* Info */}
         <div className="flex flex-col py-2">
           {categoryName && (
             <div className="mb-3 flex items-center gap-2">
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-xs font-black text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-widest">
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-xs font-black text-amber-600 uppercase tracking-widest">
                 {categoryName}
               </span>
             </div>
           )}
           
-          <h1 className="text-4xl font-black text-[#5C4033] dark:text-white lg:text-5xl leading-tight">
+          <h1 className="text-4xl font-black text-[#5C4033] lg:text-5xl leading-tight">
             {product.productName}
           </h1>
 
           <div className="mt-6 flex items-baseline gap-4">
-            <span className="text-4xl font-black text-[#5C4033] dark:text-amber-400">
-              {product.price?.toLocaleString('vi-VN')} <span className="text-2xl font-bold text-gray-400 ml-1.5 underline decoration-gray-300">đ</span>
-            </span>
-            <span className="text-lg font-medium text-gray-400 line-through decoration-red-400/50">
-              {(product.price * 1.2).toLocaleString('vi-VN')} đ
+            <span className="text-4xl font-black text-[#5C4033]">
+              {currentPrice.toLocaleString('vi-VN')} <span className="text-2xl font-bold text-gray-400 ml-1.5 underline decoration-gray-300">đ</span>
             </span>
           </div>
 
-          <div className="mt-8 rounded-2xl bg-amber-50/50 p-5 border-l-4 border-amber-500 dark:bg-navy-900/50 dark:border-amber-400">
-            {/* 🌟 ĐÃ SỬA CHÍNH TẢ: description */}
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 leading-relaxed italic">
-              "{product.description?.substring(0, 150) || "Hương vị nguyên bản được pha chế tỉ mỉ từ những nguyên liệu chọn lọc nhất, mang đến cho bạn trải nghiệm tuyệt vời."}..."
+          <div className="mt-8 rounded-2xl bg-amber-50/50 p-5 border-l-4 border-amber-500">
+            <p className="text-sm font-medium text-gray-600 leading-relaxed italic">
+              "{product.description?.substring(0, 150) || "Hương vị nguyên bản được pha chế tỉ mỉ từ những nguyên liệu chọn lọc nhất..."}..."
             </p>
           </div>
 
-          <hr className="my-8 border-gray-100 dark:border-white/10" />
+          <hr className="my-8 border-gray-100" />
 
-          {/* Quantity */}
+          {/* 🌟 NÚT CHỌN KHỐI LƯỢNG MỚI */}
+          {product.variants && product.variants.length > 0 && (
+            <div className="mb-8">
+              <span className="text-sm font-black uppercase tracking-widest text-[#5C4033] mb-4 block">Chọn Trọng Lượng</span>
+              <div className="flex flex-wrap gap-3">
+                {product.variants.map((variant) => (
+                  <button
+                    key={variant.id}
+                    onClick={() => {
+                      setSelectedVariant(variant);
+                      setQuantity(1); // Đổi loại thì reset số lượng
+                    }}
+                    className={`rounded-xl px-5 py-2.5 text-sm font-bold transition-all border-2 ${
+                      selectedVariant?.id === variant.id 
+                        ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-md shadow-amber-500/20'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-amber-300'
+                    }`}
+                  >
+                    {variant.weight}{variant.unit}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-6">
-            <span className="text-sm font-black uppercase tracking-widest text-[#5C4033] dark:text-white">Số lượng</span>
-            <div className="flex items-center rounded-2xl border-2 border-amber-100 bg-white p-1.5 shadow-sm dark:border-navy-700 dark:bg-navy-900">
-              <button onClick={handleDecrease} className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold text-[#5C4033] transition hover:bg-amber-50 active:scale-90 dark:text-white dark:hover:bg-white/10">-</button>
-              <span className="w-12 text-center text-lg font-black text-[#5C4033] dark:text-white">{quantity}</span>
-              <button onClick={handleIncrease} className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold text-[#5C4033] transition hover:bg-amber-50 active:scale-90 dark:text-white dark:hover:bg-white/10">+</button>
+            <span className="text-sm font-black uppercase tracking-widest text-[#5C4033]">Số lượng</span>
+            <div className="flex items-center rounded-2xl border-2 border-amber-100 bg-white p-1.5 shadow-sm">
+              <button onClick={handleDecrease} className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold text-[#5C4033] hover:bg-amber-50">-</button>
+              <span className="w-12 text-center text-lg font-black text-[#5C4033]">{quantity}</span>
+              <button onClick={handleIncrease} className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold text-[#5C4033] hover:bg-amber-50">+</button>
             </div>
             <span className="text-xs font-bold text-amber-600/70">
-              Chỉ còn {product.availability} ly hôm nay
+              Chỉ còn {currentAvailability} túi trong kho
             </span>
           </div>
 
-          {/* Action Buttons */}
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-            <button onClick={handleAddToCart} disabled={product.availability === 0} className="flex flex-[1.5] items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-white py-4 text-base font-black text-amber-600 transition-all hover:bg-amber-500 hover:text-white disabled:border-gray-300 disabled:text-gray-300 shadow-xl shadow-amber-500/10 dark:bg-navy-800">
+            <button onClick={handleAddToCart} disabled={currentAvailability === 0} className="flex flex-[1.5] items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-white py-4 text-base font-black text-amber-600 hover:bg-amber-500 hover:text-white disabled:border-gray-300 disabled:text-gray-300">
               <MdAddShoppingCart size={24} /> THÊM VÀO GIỎ
             </button>
-            <button onClick={handleBuyNow} disabled={product.availability === 0} className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#5C4033] py-4 text-base font-black text-white transition-all hover:bg-[#3e2723] active:scale-95 disabled:bg-gray-300 shadow-xl shadow-[#5C4033]/20">
-              <MdFlashOn size={24} className="text-amber-400 group-hover:animate-pulse" /> MUA NGAY
+            <button onClick={handleBuyNow} disabled={currentAvailability === 0} className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#5C4033] py-4 text-base font-black text-white hover:bg-[#3e2723] disabled:bg-gray-300">
+              <MdFlashOn size={24} className="text-amber-400" /> MUA NGAY
             </button>
-          </div>
-
-          {/* Badges */}
-          <div className="mt-10 grid grid-cols-3 gap-4 border-t border-gray-100 pt-8 dark:border-white/10">
-            <div className="flex flex-col items-center text-center group cursor-default">
-              <MdEco className="mb-2 text-3xl text-green-500 transition-transform group-hover:scale-110 group-hover:-translate-y-1" />
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">100% Hữu cơ</span>
-            </div>
-            <div className="flex flex-col items-center text-center border-x border-gray-100 dark:border-white/10 px-2 group cursor-default">
-              <MdLocalShipping className="mb-2 text-3xl text-amber-500 transition-transform group-hover:scale-110 group-hover:-translate-y-1" />
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Giao hỏa tốc</span>
-            </div>
-            <div className="flex flex-col items-center text-center group cursor-default">
-              <MdLocalCafe className="mb-2 text-3xl text-[#5C4033] transition-transform group-hover:scale-110 group-hover:-translate-y-1 dark:text-amber-200" />
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Pha thủ công</span>
-            </div>
           </div>
         </div>
       </div>

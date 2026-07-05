@@ -15,13 +15,18 @@ const cartApi = {
     getCart: () => 
         axiosClient.get(BASE_URL, { headers: { 'Cart-Id': getCartId() } }),
         
-    addToCart: (productId, quantity) => 
-        axiosClient.post(`${BASE_URL}?productId=${productId}&quantity=${quantity}`, null, { headers: { 'Cart-Id': getCartId() } }),
+    addToCart: (productId, variantId, quantity) => {
+        let url = `${BASE_URL}?productId=${productId}&quantity=${quantity}`;
+        if (variantId) url += `&variantId=${variantId}`;
+        return axiosClient.post(url, null, { headers: { 'Cart-Id': getCartId() } });
+    },
         
-    removeFromCart: (productId) => 
-        axiosClient.delete(`${BASE_URL}?productId=${productId}`, { headers: { 'Cart-Id': getCartId() } }),
+    removeFromCart: (productId, variantId) => {
+        let url = `${BASE_URL}?productId=${productId}`;
+        if (variantId) url += `&variantId=${variantId}`;
+        return axiosClient.delete(url, { headers: { 'Cart-Id': getCartId() } });
+    },
         
-    // HÀM MỚI: Khớp chính xác với @PostMapping("/cart/merge") của Backend
     mergeCart: (guestCartId, userCartId) => 
         axiosClient.post(`${BASE_URL}/merge?guestCartId=${guestCartId}&userCartId=${userCartId}`)
 };

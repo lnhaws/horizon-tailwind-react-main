@@ -55,36 +55,62 @@ const Tables = () => {
     }
   };
 
-  // XỬ LÝ LƯU (THÊM HOẶC SỬA) VÀ UPLOAD ẢNH
-  const handleSave = async (productData, imageFile) => {
+ const handleSave = async (productData, mainImageFile) => {
     try {
       let savedProduct;
 
-      // Mình gắn thêm một imageUrl rỗng để tránh lỗi Not Null trong Database
-      const finalData = { ...productData, imageUrl: productData.imageUrl || "" };
+      // Mình phải xóa field imageFile ra khỏi các variant trước khi gửi API bằng JSON để tránh lỗi
+      const cleanVariants = productData.variants.map(v => ({
+        id: v.id || null, // Nếu sửa thì có ID, nếu thêm mới thì null
+        weight: v.weight,
+        unit: v.unit,
+        price: v.price,
+        availability: v.availability
+      }));
 
-      // BƯỚC 1: Lưu thông tin chữ
+      // BƯỚC 1: Lưu thông tin chữ (Cha + Con)
+      const finalData = { 
+        productName: productData.productName,
+        categoryId: productData.categoryId,
+        description: productData.description,
+        price: 0, 
+        availability: 0, 
+        
+        variants: cleanVariants
+      };
+
       if (editingProduct) {
         savedProduct = await productApi.updateProduct(editingProduct.id, finalData);
       } else {
         savedProduct = await productApi.addProduct(finalData);
       }
 
-      // BƯỚC 2: Upload ảnh
-      if (imageFile && savedProduct && savedProduct.id) {
-        // 🌟 BẢN FIX CUỐI CÙNG: KHÔNG ĐÓNG GÓI FORMDATA Ở ĐÂY NỮA
-        // Chỉ truyền đúng cái file thô qua cho productApi xử lý
-        await productApi.uploadImage(savedProduct.id, imageFile); 
+      // BƯỚC 2: Upload Ảnh gốc
+      if (mainImageFile && savedProduct && savedProduct.id) {
+        await productApi.uploadImage(savedProduct.id, mainImageFile); 
+      }
+
+      // BƯỚC 3: Mò theo Trọng lượng để Upload Ảnh riêng cho từng Biến thể
+      if (savedProduct && savedProduct.variants) {
+        for (const frontendVar of productData.variants) {
+           if (frontendVar.imageFile) {
+               // Dò tìm ID của biến thể này dưới Backend vừa tạo ra (Dựa vào Trọng lượng & Đơn vị)
+               const matchedBackendVar = savedProduct.variants.find(
+                 v => v.weight === frontendVar.weight && v.unit === frontendVar.unit
+               );
+               if (matchedBackendVar) {
+                   await productApi.uploadVariantImage(matchedBackendVar.id, frontendVar.imageFile);
+               }
+           }
+        }
       }
 
       setIsModalOpen(false);
       fetchData(); 
       alert("Lưu sản phẩm thành công!");
     } catch (error) {
-      // In lỗi chi tiết ra màn hình
-      const errorMsg = error.response?.data?.message || error.response?.data || error.message;
-      alert("Lỗi từ Backend: " + JSON.stringify(errorMsg));
-      console.error("Chi tiết lỗi:", error);
+      alert("Lỗi từ Backend, vui lòng kiểm tra Console!");
+      console.error(error);
     }
   };
 

@@ -1,7 +1,6 @@
 import Card from "components/card";
 import React from "react";
 
-// 1. NHẬN THÊM prop `categories` TỪ TRANG CHÍNH TRUYỀN VÀO
 export default function ProductTable({ tableData, categories, onAddClick, onEditClick, onDeleteClick }) {
   
   const getImageUrl = (url) => {
@@ -11,11 +10,32 @@ export default function ProductTable({ tableData, categories, onAddClick, onEdit
     return `http://localhost:8900/api/catalog/${cleanUrl}`;
   };
 
-  // 2. HÀM "DỊCH THUẬT": Biến con số categoryId thành chữ categoryName
   const getCategoryName = (id) => {
     if (!categories || categories.length === 0) return "Đang tải...";
     const foundCategory = categories.find((cat) => cat.id === id);
     return foundCategory ? foundCategory.categoryName : "Không xác định";
+  };
+
+  // 🌟 HÀM ĐÃ ĐƯỢC NÂNG CẤP: Lấy ra khoảng giá (Min - Max)
+  const getDisplayPrice = (product) => {
+    if (product.variants && product.variants.length > 0) {
+        // Lấy ra tất cả các giá của biến thể
+        const prices = product.variants.map(v => v.price);
+        
+        // Tìm giá nhỏ nhất và lớn nhất
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+
+        // Nếu giá nhỏ nhất bằng giá lớn nhất (hoặc chỉ có 1 biến thể) -> In 1 giá
+        if (minPrice === maxPrice) {
+            return `${minPrice.toLocaleString('vi-VN')} đ`;
+        }
+        
+        // Nếu có sự chênh lệch -> In khoảng giá
+        return `${minPrice.toLocaleString('vi-VN')} đ - ${maxPrice.toLocaleString('vi-VN')} đ`;
+    }
+    // Dành cho trường hợp sản phẩm chưa có biến thể
+    return `${(product.price || 0).toLocaleString('vi-VN')} đ`; 
   };
 
   return (
@@ -36,7 +56,7 @@ export default function ProductTable({ tableData, categories, onAddClick, onEdit
               <th className="border-b-[1px] border-gray-200 pt-4 pb-2 pr-4 text-start text-xs font-bold text-gray-400">HÌNH ẢNH</th>
               <th className="border-b-[1px] border-gray-200 pt-4 pb-2 pr-4 text-start text-xs font-bold text-gray-400">TÊN SẢN PHẨM</th>
               <th className="border-b-[1px] border-gray-200 pt-4 pb-2 pr-4 text-start text-xs font-bold text-gray-400">DANH MỤC</th>
-              <th className="border-b-[1px] border-gray-200 pt-4 pb-2 pr-4 text-start text-xs font-bold text-gray-400">GIÁ (VND)</th>
+              <th className="border-b-[1px] border-gray-200 pt-4 pb-2 pr-4 text-start text-xs font-bold text-gray-400">MỨC GIÁ</th>
               <th className="border-b-[1px] border-gray-200 pt-4 pb-2 pr-4 text-center text-xs font-bold text-gray-400">THAO TÁC</th>
             </tr>
           </thead>
@@ -49,17 +69,17 @@ export default function ProductTable({ tableData, categories, onAddClick, onEdit
                 <td className="min-w-[150px] border-white/0 py-3 pr-4 font-bold text-navy-700 dark:text-white">
                   {product.productName}
                 </td>
-                
-                {/* 3. IN TÊN DANH MỤC RA BẰNG HÀM getCategoryName */}
                 <td className="min-w-[150px] border-white/0 py-3 pr-4 text-sm text-gray-600 dark:text-white font-medium">
                   <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-navy-700">
                     {getCategoryName(product.categoryId)}
                   </span>
                 </td>
-
+                
+                {/* 🌟 ĐÃ SỬA LẠI CÁCH GỌI HÀM: Vì hàm getDisplayPrice đã tự format chuỗi và ghép chữ "đ" rồi */}
                 <td className="min-w-[150px] border-white/0 py-3 pr-4 font-bold text-brand-500 dark:text-white">
-                  {product.price ? product.price.toLocaleString('vi-VN') : 0} đ
+                  {getDisplayPrice(product)}
                 </td>
+
                 <td className="min-w-[150px] border-white/0 py-3 pr-4 text-center space-x-2">
                    <button onClick={() => onEditClick(product)} className="text-sm font-bold text-brand-500 hover:text-brand-700 px-3 py-1">Sửa</button>
                    <button onClick={() => onDeleteClick(product.id)} className="text-sm font-bold text-red-500 hover:text-red-700 px-3 py-1">Xóa</button>

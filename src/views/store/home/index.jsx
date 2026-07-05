@@ -53,11 +53,10 @@ export default function StoreHome({ searchTerm = "" }) {
         return matchCategory && matchSearch;
     });
 
-    const handleAddToCart = async (productId) => {
+   const handleAddToCart = async (productId) => {
         try {
-            await cartApi.addToCart(productId, 1);
+            await cartApi.addToCart(productId, null, 1);
             window.dispatchEvent(new Event('cartUpdated'));
-            // Thay bằng toast nếu có, alert tạm thời
             alert("☕ Đã thêm món vào giỏ hàng!"); 
         } catch (error) {
             console.error("Lỗi thêm giỏ hàng:", error);

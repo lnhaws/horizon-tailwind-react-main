@@ -93,7 +93,7 @@ export default function StoreCheckout() {
               }
           } else {
               alert(`🎉 ĐẶT HÀNG THÀNH CÔNG!\nMã đơn hàng của bạn là: #${newOrderId}\nCảm ơn bạn đã mua sắm!`);
-              navigate("/orders"); // 🌟 Tui đổi nhẹ chỗ này: Đặt xong thì cho bay thẳng sang trang Lịch sử đơn hàng luôn cho xịn
+              navigate("/orders"); // Đặt xong thì cho bay thẳng sang trang Lịch sử đơn hàng
           }
       } catch (error) {
           console.error("Lỗi đặt hàng:", error);
@@ -103,7 +103,8 @@ export default function StoreCheckout() {
       }
   };
 
-  const totalAmount = cartItems.reduce((sum, item) => sum + ((item.product?.price || 0) * (item.quantity || 1)), 0);
+  // 🌟 ĐÃ SỬA: Lấy chuẩn subTotal từ Backend để cộng tổng tiền
+  const totalAmount = cartItems.reduce((sum, item) => sum + (item.subTotal || 0), 0);
 
   return (
     <div className="animate-fade-in pb-10">
@@ -126,7 +127,6 @@ export default function StoreCheckout() {
                   </div>
                   
                   <form id="checkout-form" onSubmit={handlePlaceOrder} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* 🌟 3. THÊM THUỘC TÍNH value={shippingInfo.xxx} VÀO CÁC INPUT ĐỂ NÓ HIỆN CHỮ LÊN */}
                       <div>
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Họ và tên *</label>
                           <input type="text" name="fullName" value={shippingInfo.fullName} required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="Nhập họ và tên" />
@@ -181,7 +181,8 @@ export default function StoreCheckout() {
                                  <span className="line-clamp-1 text-sm font-medium text-navy-700 dark:text-white">{item.product?.productName}</span>
                                  <span className="text-xs text-gray-500">SL: {item.quantity}</span>
                              </div>
-                             <span className="text-sm font-bold text-brand-500">{(item.product?.price * item.quantity).toLocaleString('vi-VN')} ₫</span>
+                             {/* 🌟 ĐÃ SỬA: Dùng trực tiếp item.subTotal */}
+                             <span className="text-sm font-bold text-brand-500">{(item.subTotal || 0).toLocaleString('vi-VN')} ₫</span>
                          </div>
                      ))}
                  </div>

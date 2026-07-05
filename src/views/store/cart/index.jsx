@@ -1,12 +1,10 @@
-// src/views/store/cart/index.jsx
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; // 🌟 Đã thêm useNavigate
+import { Link, useNavigate } from "react-router-dom"; 
 import cartApi from "api/cartApi";
-import orderApi from "api/orderApi"; // 🌟 Đã thêm orderApi
 import { MdDelete, MdSecurity } from "react-icons/md";
 
 export default function StoreCart() {
-  const navigate = useNavigate(); // 🌟 Khai báo navigate
+  const navigate = useNavigate(); 
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItemIds, setSelectedItemIds] = useState([]);
@@ -36,6 +34,7 @@ export default function StoreCart() {
   const handleRemove = async (productId) => {
     if (window.confirm("Bỏ sản phẩm này khỏi giỏ hàng?")) {
       try {
+        // Tạm thời gọi API bằng productId (nếu có variantId thì phải xử lý kỹ hơn, nhưng tạm thời để xóa cho sạch giỏ)
         await cartApi.removeFromCart(productId);
         window.dispatchEvent(new Event('cartUpdated'));
         setCartItems(prev => prev.filter(item => item.product?.id !== productId));
@@ -62,13 +61,15 @@ export default function StoreCart() {
     }
   };
 
+  // 🌟 ĐÃ SỬA: Tính lại subTotal khi tăng giảm số lượng dựa trên đơn giá chuẩn
   const handleQuantityChange = (productId, currentQty, change) => {
     const newQty = currentQty + change;
     if (newQty < 1) return;
 
     setCartItems(prev => prev.map(item => {
       if (item.product?.id === productId) {
-        return { ...item, quantity: newQty, subTotal: (item.product?.price || 0) * newQty };
+        const unitPrice = item.subTotal / item.quantity; // Tính ra giá của 1 gói
+        return { ...item, quantity: newQty, subTotal: unitPrice * newQty };
       }
       return item;
     }));
@@ -100,10 +101,9 @@ export default function StoreCart() {
     navigate("/checkout", { state: { selectedItemIds: selectedItemIds } });
   };
 
+  // 🌟 ĐÃ SỬA: Lấy chuẩn subTotal từ Backend để cộng tổng tiền
   const selectedItems = cartItems.filter(item => selectedItemIds.includes(item.product?.id));
-  const totalAmount = selectedItems.reduce((sum, item) => {
-    return sum + (item.subTotal || ((item.product?.price || 0) * (item.quantity || 1)));
-  }, 0);
+  const totalAmount = selectedItems.reduce((sum, item) => sum + (item.subTotal || 0), 0);
 
   const isAllSelected = cartItems.length > 0 && selectedItemIds.length === cartItems.length;
 
@@ -133,117 +133,68 @@ export default function StoreCart() {
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-6">
-
-          {/* CỘT TRÁI: TOOLBAR & DANH SÁCH */}
           <div className="w-full lg:w-2/3 flex flex-col gap-4">
-
-            {/* TOOLBAR CHỌN TẤT CẢ */}
             <div className="flex items-center justify-between px-2 py-2">
-              <div
-                onClick={handleSelectAll}
-                className="flex items-center gap-4 cursor-pointer group"
-              >
+              <div onClick={handleSelectAll} className="flex items-center gap-4 cursor-pointer group">
                 <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all duration-300 ${isAllSelected ? 'scale-110 bg-red-500 border-red-500 shadow-[0_0_14px_rgba(239,68,68,0.8)]' : 'border-gray-300 bg-white group-hover:border-red-400'}`}>
-                  {isAllSelected && (
-                    <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
+                  {isAllSelected && <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                 </div>
-                <span className="font-medium text-navy-700 dark:text-white">
-                  Chọn tất cả ({cartItems.length})
-                </span>
+                <span className="font-medium text-navy-700 dark:text-white">Chọn tất cả ({cartItems.length})</span>
               </div>
-
-              {/* NÚT XÓA */}
               {selectedItemIds.length > 0 && (
-                <button
-                  onClick={handleRemoveSelected}
-                  className="text-sm text-gray-500 hover:text-red-500 transition font-medium"
-                >
-                  Xóa sản phẩm đã chọn
-                </button>
+                <button onClick={handleRemoveSelected} className="text-sm text-gray-500 hover:text-red-500 transition font-medium">Xóa sản phẩm đã chọn</button>
               )}
             </div>
 
-            {/* DANH SÁCH SẢN PHẨM */}
             {cartItems.map((item, index) => {
               const prod = item.product || {};
               const isSelected = selectedItemIds.includes(prod.id);
+              // 🌟 ĐÃ SỬA: Lấy giá 1 sản phẩm = subTotal / quantity
+              const unitPrice = item.subTotal && item.quantity ? item.subTotal / item.quantity : 0;
 
               return (
                 <div key={index} className="flex gap-4 rounded-xl bg-white p-4 border border-gray-200 dark:border-navy-700 dark:bg-navy-800">
-
                   <div onClick={() => handleSelectItem(prod.id)} className="pt-1 pl-1 cursor-pointer shrink-0">
                     <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all duration-300 ${isSelected ? 'scale-110 bg-red-500 border-red-500 shadow-[0_0_14px_rgba(239,68,68,0.8)]' : 'border-gray-300 bg-white hover:border-red-400'}`}>
-                      {isSelected && (
-                        <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
+                      {isSelected && <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                     </div>
                   </div>
 
                   <Link to={`/product/${prod.id}`} className="h-24 w-24 shrink-0 overflow-hidden rounded border border-gray-100">
-                    <img
-                      src={getImageUrl(prod.imageUrl)}
-                      alt={prod.productName}
-                      onError={(e) => { e.target.src = "https://via.placeholder.com/150?text=No+Image"; }}
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={getImageUrl(prod.imageUrl)} alt={prod.productName} className="h-full w-full object-cover" />
                   </Link>
 
                   <div className="flex flex-1 flex-col justify-between">
-
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex flex-col">
                         <Link to={`/product/${prod.id}`} className="line-clamp-2 text-base font-medium text-navy-700 hover:text-brand-500 dark:text-white leading-snug">
                           {prod.productName || "Sản phẩm không xác định"}
                         </Link>
                         <div className="mt-1 flex items-baseline gap-2">
-                          <span className="text-lg font-bold text-red-500">{prod.price ? prod.price.toLocaleString('vi-VN') : 0} ₫</span>
-                          <span className="text-sm text-gray-400 line-through">
-                            {prod.price ? (prod.price * 1.2).toLocaleString('vi-VN') : 0} ₫
-                          </span>
+                          {/* 🌟 ĐÃ SỬA: Dùng unitPrice */}
+                          <span className="text-lg font-bold text-red-500">{unitPrice.toLocaleString('vi-VN')} ₫</span>
+                          <span className="text-sm text-gray-400 line-through">{(unitPrice * 1.2).toLocaleString('vi-VN')} ₫</span>
                         </div>
                       </div>
-
-                      <button onClick={() => handleRemove(prod.id)} className="text-gray-400 hover:text-red-500 shrink-0 mt-1">
-                        <MdDelete size={20} />
-                      </button>
+                      <button onClick={() => handleRemove(prod.id)} className="text-gray-400 hover:text-red-500 shrink-0 mt-1"><MdDelete size={20} /></button>
                     </div>
 
                     <div className="flex justify-end mt-2">
                       <div className="flex items-center rounded border border-gray-200 bg-white">
-                        <button
-                          onClick={() => handleQuantityChange(prod.id, item.quantity, -1)}
-                          className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition"
-                        >
-                          -
-                        </button>
-                        <span className="flex h-7 w-10 items-center justify-center border-x border-gray-200 text-sm font-medium text-navy-700">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => handleQuantityChange(prod.id, item.quantity, 1)}
-                          className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition"
-                        >
-                          +
-                        </button>
+                        <button onClick={() => handleQuantityChange(prod.id, item.quantity, -1)} className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition">-</button>
+                        <span className="flex h-7 w-10 items-center justify-center border-x border-gray-200 text-sm font-medium text-navy-700">{item.quantity}</span>
+                        <button onClick={() => handleQuantityChange(prod.id, item.quantity, 1)} className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition">+</button>
                       </div>
                     </div>
-
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG */}
           <div className="w-full lg:w-1/3 flex flex-col">
             <div className="sticky top-24 rounded-xl border border-gray-200 bg-white p-5 dark:border-navy-700 dark:bg-navy-800">
               <h2 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Tóm tắt đơn hàng</h2>
-
               <div className="space-y-3 border-b border-gray-100 pb-4 dark:border-navy-700">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Tạm tính ({selectedItemIds.length} sản phẩm)</span>
@@ -254,31 +205,18 @@ export default function StoreCart() {
                   <span className="text-sm font-medium text-green-500">Miễn phí</span>
                 </div>
               </div>
-
               <div className="mb-6 mt-4 flex items-end justify-between">
                 <span className="text-base font-bold text-navy-700 dark:text-white">Tổng cộng</span>
                 <span className="text-2xl font-bold text-red-500">{totalAmount.toLocaleString('vi-VN')} ₫</span>
               </div>
-
-              {/* 🌟 NÚT THANH TOÁN (ĐÃ GẮN SỰ KIỆN) */}
-              <button
-                onClick={handleCheckout}
-                disabled={selectedItemIds.length === 0}
-                className={`w-full rounded py-3 text-sm font-bold text-white transition-colors
-                      ${selectedItemIds.length > 0
-                    ? 'bg-brand-500 hover:bg-brand-600'
-                    : 'bg-gray-300 cursor-not-allowed dark:bg-navy-600'}`}
-              >
+              <button onClick={handleCheckout} disabled={selectedItemIds.length === 0} className={`w-full rounded py-3 text-sm font-bold text-white transition-colors ${selectedItemIds.length > 0 ? 'bg-brand-500 hover:bg-brand-600' : 'bg-gray-300 cursor-not-allowed dark:bg-navy-600'}`}>
                 TIẾN HÀNH ĐẶT HÀNG {selectedItemIds.length > 0 ? `(${selectedItemIds.length})` : ''}
               </button>
-
               <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-gray-400">
-                <MdSecurity size={14} />
-                <span>Bảo mật thông tin & thanh toán 100%</span>
+                <MdSecurity size={14} /><span>Bảo mật thông tin & thanh toán 100%</span>
               </div>
             </div>
           </div>
-
         </div>
       )}
     </div>

@@ -40,6 +40,26 @@ const productApi = {
         formData.append("image", actualFile); 
 
         return axios.post(`http://localhost:8900${BASE_URL}/admin/products/${productId}/image`, formData);
+    },
+    uploadVariantImage: async (variantId, fileObj) => {
+        let actualFile = fileObj;
+        if (typeof fileObj === 'string' && fileObj.startsWith('data:image')) {
+            const arr = fileObj.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while(n--) { u8arr[n] = bstr.charCodeAt(n); }
+            actualFile = new File([u8arr], "variant_image.jpg", { type: mime });
+        } else if (fileObj && fileObj.target && fileObj.target.files) {
+            actualFile = fileObj.target.files[0];
+        } else if (Array.isArray(fileObj)) {
+            actualFile = fileObj[0];
+        }
+
+        const formData = new FormData();
+        formData.append("image", actualFile); 
+        return axios.post(`http://localhost:8900/api/catalog/admin/variants/${variantId}/image`, formData);
     }
 };
 
