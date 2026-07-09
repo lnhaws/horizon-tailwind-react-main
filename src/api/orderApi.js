@@ -2,7 +2,19 @@
 import axiosClient from './axiosClient';
 
 const getCartId = () => {
+    const currentUserStr = localStorage.getItem('currentUser');
+    if (currentUserStr) {
+        try {
+            const user = JSON.parse(currentUserStr);
+            if (user && user.id) return user.id.toString(); 
+        } catch (e) {}
+    }
+    
     let cartId = localStorage.getItem('cartId');
+    if (!cartId) {
+        cartId = Date.now().toString(); 
+        localStorage.setItem('cartId', cartId);
+    }
     return cartId;
 };
 
