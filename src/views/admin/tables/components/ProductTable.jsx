@@ -93,3 +93,5 @@ export default function ProductTable({ tableData, categories, onAddClick, onEdit
     </Card>
   );
 }
+
+

@@ -4,7 +4,7 @@ import productApi from "api/productApi";
 import cartApi from "api/cartApi";
 import categoryApi from "api/categoryApi";
 import LoadingSpinner from "components/loading/LoadingSpinner";
-import { MdAddShoppingCart, MdKeyboardArrowLeft, MdEco, MdLocalShipping, MdLocalCafe, MdFlashOn } from "react-icons/md";
+import { MdAddShoppingCart, MdKeyboardArrowLeft, MdLocalCafe, MdFlashOn } from "react-icons/md";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -15,14 +15,29 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [categoryName, setCategoryName] = useState(""); 
   
-  // 🌟 MỚI: State lưu Biến thể đang chọn
   const [selectedVariant, setSelectedVariant] = useState(null);
 
   const getImageUrl = (url) => {
-    if (!url) return "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop";
+    if (!url || url === "null" || url === "undefined") return "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop";
     if (url.startsWith("http")) return url;
     const cleanUrl = url.startsWith("/") ? url.slice(1) : url;
     return `http://localhost:8900/api/catalog/${cleanUrl}`;
+  };
+
+  const renderRelatedPrice = (item) => {
+    if (item.variants && item.variants.length > 0) {
+      const minPrice = Math.min(...item.variants.map(v => v.price));
+      return (
+        <>
+          {minPrice.toLocaleString('vi-VN')} <span className="text-sm font-bold text-gray-400 underline decoration-gray-300">đ</span>
+        </>
+      );
+    }
+    return (
+      <>
+        {(item.price || 0).toLocaleString('vi-VN')} <span className="text-sm font-bold text-gray-400 underline decoration-gray-300">đ</span>
+      </>
+    );
   };
 
   useEffect(() => {
@@ -30,18 +45,20 @@ export default function ProductDetail() {
       setLoading(true);
       try {
         const data = await productApi.getProductById(id);
-        setProduct(data);
-        setQuantity(1); 
-
+        
         if (data) {
-            // 🌟 TỰ ĐỘNG CHỌN BIẾN THỂ RẺ NHẤT MẶC ĐỊNH
             if (data.variants && data.variants.length > 0) {
-              const sortedVariants = [...data.variants].sort((a, b) => a.price - b.price);
+              const sortedVariants = [...data.variants].sort((a, b) => {
+                const weightA = a.unit === 'kg' ? a.weight * 1000 : a.weight;
+                const weightB = b.unit === 'kg' ? b.weight * 1000 : b.weight;
+                return weightA - weightB;
+              });
               data.variants = sortedVariants;
-              setSelectedVariant(sortedVariants[0]);
-            } else {
-              setSelectedVariant(null);
             }
+            
+            setSelectedVariant(null);
+            setProduct(data);
+            setQuantity(1); 
 
             const currentCatId = data.categoryId || data.category?.id;
             if (currentCatId) {
@@ -69,32 +86,60 @@ export default function ProductDetail() {
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   }, [id]);
 
-  // 🌟 ĐỒNG BỘ GIÁ, TỒN KHO VÀ ẢNH THEO BIẾN THỂ ĐANG CHỌN
-  const currentPrice = selectedVariant ? selectedVariant.price : (product?.price || 0);
-  const currentAvailability = selectedVariant ? selectedVariant.availability : (product?.availability || 0);
+  const hasVariants = product?.variants && product.variants.length > 0;
+
+  const currentPrice = selectedVariant ? selectedVariant.price : (hasVariants ? product.variants[0].price : (product?.price || 0));
+  const currentAvailability = selectedVariant ? selectedVariant.availability : (hasVariants ? 1 : (product?.availability || 0));
   const currentImage = (selectedVariant && selectedVariant.imageUrl) ? selectedVariant.imageUrl : product?.imageUrl;
 
   const handleDecrease = () => quantity > 1 && setQuantity(quantity - 1);
   const handleIncrease = () => quantity < currentAvailability && setQuantity(quantity + 1);
 
   const handleAddToCart = async () => {
+    if (hasVariants && !selectedVariant) {
+      alert("⚠️ Vui lòng chọn khối lượng trước khi thêm vào giỏ hàng!");
+      return;
+    }
+
     try {
-      // 🌟 Lấy id của khối lượng đang chọn (nếu có)
       const variantId = selectedVariant ? selectedVariant.id : null;
-      
-      // Truyền variantId vào giữa productId và quantity
+
+      // 🌟 KẾT GIỚI BẢO VỆ KHO: Kiểm tra số lượng đang "ngậm" trong giỏ
+      const currentCart = await cartApi.getCart();
+      const existingItem = (currentCart || []).find(item => item.product?.id === product.id && item.variantId === variantId);
+      const existingQty = existingItem ? existingItem.quantity : 0;
+
+      if (existingQty + quantity > currentAvailability) {
+        alert(`⚠️ Rất tiếc! Giỏ hàng của bạn đã có sẵn ${existingQty} gói. Kho hiện chỉ còn ${currentAvailability} gói, không thể thêm nữa!`);
+        return;
+      }
+
       await cartApi.addToCart(product.id, variantId, quantity);
-      
       window.dispatchEvent(new Event('cartUpdated'));
-      alert(`☕ Đã thêm ${quantity} gói vào giỏ hàng!`);
+      alert(`☕ Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
     } catch (error) {
       alert("Lỗi: " + error.message);
     }
   };
 
   const handleBuyNow = async () => {
+    if (hasVariants && !selectedVariant) {
+      alert("⚠️ Vui lòng chọn khối lượng trước khi đặt mua!");
+      return;
+    }
+
     try {
       const variantId = selectedVariant ? selectedVariant.id : null;
+
+      const currentCart = await cartApi.getCart();
+      const existingItem = (currentCart || []).find(item => item.product?.id === product.id && item.variantId === variantId);
+      const existingQty = existingItem ? existingItem.quantity : 0;
+
+      if (existingQty + quantity > currentAvailability) {
+        alert(`⚠️ Rất tiếc! Giỏ hàng của bạn đã có sẵn ${existingQty} gói. Kho hiện chỉ còn ${currentAvailability} gói!`);
+        return; 
+      }
+
       await cartApi.addToCart(product.id, variantId, quantity);
       window.dispatchEvent(new Event('cartUpdated'));
       navigate("/checkout", { state: { selectedItemIds: [product.id] } });
@@ -120,7 +165,7 @@ export default function ProductDetail() {
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
         <div className="relative overflow-hidden rounded-[40px] bg-white shadow-2xl border border-orange-50">
           <img src={getImageUrl(currentImage)} alt={product.productName} className="h-full w-full object-cover transition-transform duration-700 hover:scale-110 aspect-square" />
-          {currentAvailability <= 5 && currentAvailability > 0 && (
+          {currentAvailability <= 5 && currentAvailability > 0 && selectedVariant && (
             <div className="absolute top-6 left-6 rounded-full bg-red-500 px-5 py-2 text-xs font-black text-white shadow-lg uppercase tracking-widest">
               Sắp hết nguyên liệu
             </div>
@@ -154,8 +199,7 @@ export default function ProductDetail() {
 
           <hr className="my-8 border-gray-100" />
 
-          {/* 🌟 NÚT CHỌN KHỐI LƯỢNG MỚI */}
-          {product.variants && product.variants.length > 0 && (
+          {hasVariants && (
             <div className="mb-8">
               <span className="text-sm font-black uppercase tracking-widest text-[#5C4033] mb-4 block">Chọn Trọng Lượng</span>
               <div className="flex flex-wrap gap-3">
@@ -164,7 +208,7 @@ export default function ProductDetail() {
                     key={variant.id}
                     onClick={() => {
                       setSelectedVariant(variant);
-                      setQuantity(1); // Đổi loại thì reset số lượng
+                      setQuantity(1); 
                     }}
                     className={`rounded-xl px-5 py-2.5 text-sm font-bold transition-all border-2 ${
                       selectedVariant?.id === variant.id 
@@ -186,23 +230,28 @@ export default function ProductDetail() {
               <span className="w-12 text-center text-lg font-black text-[#5C4033]">{quantity}</span>
               <button onClick={handleIncrease} className="flex h-10 w-10 items-center justify-center rounded-xl text-xl font-bold text-[#5C4033] hover:bg-amber-50">+</button>
             </div>
-            <span className="text-xs font-bold text-amber-600/70">
-              Chỉ còn {currentAvailability} túi trong kho
-            </span>
+            {hasVariants && !selectedVariant ? (
+               <span className="text-xs font-bold text-amber-600/70">
+                 Vui lòng chọn trọng lượng để xem tồn kho
+               </span>
+            ) : (
+               <span className="text-xs font-bold text-amber-600/70">
+                 Chỉ còn {currentAvailability} túi trong kho
+               </span>
+            )}
           </div>
 
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-            <button onClick={handleAddToCart} disabled={currentAvailability === 0} className="flex flex-[1.5] items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-white py-4 text-base font-black text-amber-600 hover:bg-amber-500 hover:text-white disabled:border-gray-300 disabled:text-gray-300">
+            <button onClick={handleAddToCart} disabled={currentAvailability === 0 && (!hasVariants || selectedVariant)} className="flex flex-[1.5] items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-white py-4 text-base font-black text-amber-600 hover:bg-amber-500 hover:text-white disabled:border-gray-300 disabled:text-gray-300">
               <MdAddShoppingCart size={24} /> THÊM VÀO GIỎ
             </button>
-            <button onClick={handleBuyNow} disabled={currentAvailability === 0} className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#5C4033] py-4 text-base font-black text-white hover:bg-[#3e2723] disabled:bg-gray-300">
+            <button onClick={handleBuyNow} disabled={currentAvailability === 0 && (!hasVariants || selectedVariant)} className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#5C4033] py-4 text-base font-black text-white hover:bg-[#3e2723] disabled:bg-gray-300">
               <MdFlashOn size={24} className="text-amber-400" /> MUA NGAY
             </button>
           </div>
         </div>
       </div>
 
-      {/* TỔNG QUAN MÔ TẢ CHI TIẾT */}
       <div className="mt-16 overflow-hidden rounded-[40px] bg-white shadow-sm border border-orange-50 dark:bg-navy-800 dark:border-navy-700">
         <div className="border-b border-gray-50 px-10 py-8 dark:border-white/5 bg-amber-50/30 dark:bg-navy-900/30">
           <h2 className="text-2xl font-black text-[#5C4033] dark:text-white flex items-center gap-3">
@@ -211,7 +260,6 @@ export default function ProductDetail() {
         </div>
         <div className="p-10">
           <div className="prose max-w-none text-gray-600 dark:text-gray-300 leading-loose text-lg">
-            {/* 🌟 ĐÃ SỬA CHÍNH TẢ: description */}
             {product.description ? (
               product.description.split('\n').map((line, index) => (
                 <p key={index} className="mb-5">{line}</p>
@@ -223,7 +271,6 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* SẢN PHẨM TƯƠNG TỰ */}
       {relatedProducts.length > 0 && (
         <div className="mt-20">
           <div className="mb-10 flex items-center justify-between text-center w-full">
@@ -249,7 +296,7 @@ export default function ProductDetail() {
                   </h3>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-lg font-black text-[#5C4033] dark:text-amber-400">
-                      {item.price?.toLocaleString('vi-VN')} <span className="text-sm font-bold text-gray-400 underline decoration-gray-300">đ</span>
+                      {renderRelatedPrice(item)}
                     </span>
                   </div>
                 </div>

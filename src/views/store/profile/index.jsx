@@ -6,10 +6,12 @@ import { MdOutlinePerson, MdOutlineLocationOn } from "react-icons/md";
 export default function UserProfile() {
   const [loading, setLoading] = useState(false);
   
+  // 🌟 THÊM STATE LƯU TRỮ LỖI TRỰC QUAN
+  const [errors, setErrors] = useState({});
+  
   const currentUserStr = localStorage.getItem("currentUser");
   const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
 
-  // Khởi tạo state bằng dữ liệu sẵn có từ localStorage
   const [formData, setFormData] = useState({
     firstName: currentUser?.userDetails?.firstName || "",
     lastName: currentUser?.userDetails?.lastName || "",
@@ -24,22 +26,31 @@ export default function UserProfile() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // 🌟 Ẩn lỗi ngay khi người dùng bắt đầu sửa
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: null });
+    }
   };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrors({}); // Reset lỗi cũ
+
     try {
-      // 1. Gọi API cập nhật xuống Backend
       const response = await userApi.updateProfile(currentUser.id, formData);
-      
-      // 2. Lưu lại dữ liệu mới vào LocalStorage
       localStorage.setItem("currentUser", JSON.stringify(response));
       
       alert("Cập nhật thông tin cá nhân thành công!");
       window.location.reload(); 
     } catch (error) {
-      alert("Lỗi khi cập nhật thông tin! Vui lòng kiểm tra lại.");
+      // 🌟 ĐÃ SỬA: Phân tách lỗi do Backend trả về
+      // error.response.data chính là cục JSON lỗi mà file GlobalExceptionHandler tạo ra
+      if (error.response && error.response.data && typeof error.response.data === 'object') {
+        setErrors(error.response.data);
+      } else {
+        alert("Lỗi khi cập nhật thông tin! Vui lòng kiểm tra lại.");
+      }
       console.error(error);
     } finally {
       setLoading(false);
@@ -63,20 +74,32 @@ export default function UserProfile() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Họ (Last Name)</label>
-              <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
+              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Họ (Last Name) *</label>
+              <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required 
+                 className={`w-full rounded-xl border bg-gray-50 p-3.5 text-sm outline-none transition dark:bg-navy-900 dark:text-white ${errors.lastName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-amber-500 dark:border-navy-600'}`} />
+              {/* 🌟 THÔNG BÁO LỖI */}
+              {errors.lastName && <p className="mt-1 text-xs font-bold text-red-500">{errors.lastName}</p>}
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Tên (First Name)</label>
-              <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
+              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Tên (First Name) *</label>
+              <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required 
+                 className={`w-full rounded-xl border bg-gray-50 p-3.5 text-sm outline-none transition dark:bg-navy-900 dark:text-white ${errors.firstName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-amber-500 dark:border-navy-600'}`} />
+              {/* 🌟 THÔNG BÁO LỖI */}
+              {errors.firstName && <p className="mt-1 text-xs font-bold text-red-500">{errors.firstName}</p>}
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Email</label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
+              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Email *</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} required 
+                 className={`w-full rounded-xl border bg-gray-50 p-3.5 text-sm outline-none transition dark:bg-navy-900 dark:text-white ${errors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-amber-500 dark:border-navy-600'}`} />
+              {/* 🌟 THÔNG BÁO LỖI */}
+              {errors.email && <p className="mt-1 text-xs font-bold text-red-500">{errors.email}</p>}
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Số điện thoại</label>
-              <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" placeholder="VD: 0912345678" />
+              <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Số điện thoại *</label>
+              <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required placeholder="VD: 0912345678"
+                 className={`w-full rounded-xl border bg-gray-50 p-3.5 text-sm outline-none transition dark:bg-navy-900 dark:text-white ${errors.phoneNumber ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-amber-500 dark:border-navy-600'}`} />
+              {/* 🌟 THÔNG BÁO LỖI */}
+              {errors.phoneNumber && <p className="mt-1 text-xs font-bold text-red-500">{errors.phoneNumber}</p>}
             </div>
         </div>
 
@@ -87,19 +110,23 @@ export default function UserProfile() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="md:col-span-1">
               <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Số nhà / Ngõ</label>
-              <input type="text" name="streetNumber" value={formData.streetNumber} onChange={handleChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" placeholder="VD: 123A" />
+              <input type="text" name="streetNumber" value={formData.streetNumber} onChange={handleChange} placeholder="VD: 123A"
+                 className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
             </div>
             <div className="md:col-span-2">
               <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Tên đường</label>
-              <input type="text" name="street" value={formData.street} onChange={handleChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" placeholder="VD: Nguyễn Trãi" />
+              <input type="text" name="street" value={formData.street} onChange={handleChange} placeholder="VD: Nguyễn Trãi"
+                 className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
             </div>
             <div className="md:col-span-2">
               <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Phường/Xã, Quận/Huyện, Tỉnh/TP</label>
-              <input type="text" name="locality" value={formData.locality} onChange={handleChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" placeholder="VD: Phường Bến Thành, Quận 1, TP.HCM" />
+              <input type="text" name="locality" value={formData.locality} onChange={handleChange} placeholder="VD: Phường Bến Thành, Quận 1, TP.HCM"
+                 className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
             </div>
             <div className="md:col-span-1">
               <label className="mb-1.5 block text-sm font-bold text-gray-700 dark:text-gray-300">Quốc gia</label>
-              <input type="text" name="country" value={formData.country} onChange={handleChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
+              <input type="text" name="country" value={formData.country} onChange={handleChange} 
+                 className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-sm outline-none transition focus:border-amber-500 dark:bg-navy-900 dark:text-white dark:border-navy-600" />
             </div>
         </div>
 

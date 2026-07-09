@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; 
+import { Link, useNavigate } from "react-router-dom";
 import cartApi from "api/cartApi";
 import { MdDelete, MdSecurity } from "react-icons/md";
 
 export default function StoreCart() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItemIds, setSelectedItemIds] = useState([]);
@@ -31,13 +31,14 @@ export default function StoreCart() {
     fetchCart();
   }, []);
 
-  const handleRemove = async (productId) => {
+  // 🌟 ĐÃ SỬA: Nhận thêm variantId và gọi lại fetchCart() để đồng bộ 100% với Backend
+  const handleRemove = async (productId, variantId) => {
     if (window.confirm("Bỏ sản phẩm này khỏi giỏ hàng?")) {
       try {
-        // Tạm thời gọi API bằng productId (nếu có variantId thì phải xử lý kỹ hơn, nhưng tạm thời để xóa cho sạch giỏ)
-        await cartApi.removeFromCart(productId);
+        await cartApi.removeFromCart(productId, variantId);
         window.dispatchEvent(new Event('cartUpdated'));
-        setCartItems(prev => prev.filter(item => item.product?.id !== productId));
+        // Load lại data mới từ server để dứt điểm bóng ma
+        fetchCart();
         setSelectedItemIds(prev => prev.filter(id => id !== productId));
       } catch (error) {
         alert("Lỗi khi xóa sản phẩm!");
@@ -53,7 +54,7 @@ export default function StoreCart() {
           await cartApi.removeFromCart(id);
         }
         window.dispatchEvent(new Event('cartUpdated'));
-        setCartItems(prev => prev.filter(item => !selectedItemIds.includes(item.product?.id)));
+        fetchCart();
         setSelectedItemIds([]);
       } catch (error) {
         alert("Có lỗi xảy ra khi xóa danh sách!");
@@ -61,20 +62,42 @@ export default function StoreCart() {
     }
   };
 
-  // 🌟 ĐÃ SỬA: Tính lại subTotal khi tăng giảm số lượng dựa trên đơn giá chuẩn
-  const handleQuantityChange = (productId, currentQty, change) => {
+  const handleQuantityChange = async (productId, variantId, currentQty, change) => {
     const newQty = currentQty + change;
     if (newQty < 1) return;
 
+    if (change > 0) {
+      const currentCartItem = cartItems.find(item => item.product?.id === productId && item.variantId === variantId);
+      const prod = currentCartItem?.product;
+      let maxStock = prod?.availability || 0;
+
+      if (variantId && prod?.variants) {
+        const variant = prod.variants.find(v => v.id === variantId);
+        if (variant) maxStock = variant.availability;
+      }
+
+      if (newQty > maxStock) {
+        alert(`Rất tiếc, kho chỉ còn ${maxStock} sản phẩm này!`);
+        return;
+      }
+    }
+
     setCartItems(prev => prev.map(item => {
-      if (item.product?.id === productId) {
-        const unitPrice = item.subTotal / item.quantity; // Tính ra giá của 1 gói
+      if (item.product?.id === productId && item.variantId === variantId) {
+        const unitPrice = item.subTotal / item.quantity;
         return { ...item, quantity: newQty, subTotal: unitPrice * newQty };
       }
       return item;
     }));
-  };
 
+    try {
+        await cartApi.addToCart(productId, variantId, change);
+        window.dispatchEvent(new Event('cartUpdated'));
+    } catch (error) {
+        console.error("Lỗi cập nhật số lượng:", error);
+        fetchCart(); 
+    }
+  };
   const handleSelectAll = () => {
     if (selectedItemIds.length === cartItems.length && cartItems.length > 0) {
       setSelectedItemIds([]);
@@ -101,7 +124,6 @@ export default function StoreCart() {
     navigate("/checkout", { state: { selectedItemIds: selectedItemIds } });
   };
 
-  // 🌟 ĐÃ SỬA: Lấy chuẩn subTotal từ Backend để cộng tổng tiền
   const selectedItems = cartItems.filter(item => selectedItemIds.includes(item.product?.id));
   const totalAmount = selectedItems.reduce((sum, item) => sum + (item.subTotal || 0), 0);
 
@@ -149,7 +171,6 @@ export default function StoreCart() {
             {cartItems.map((item, index) => {
               const prod = item.product || {};
               const isSelected = selectedItemIds.includes(prod.id);
-              // 🌟 ĐÃ SỬA: Lấy giá 1 sản phẩm = subTotal / quantity
               const unitPrice = item.subTotal && item.quantity ? item.subTotal / item.quantity : 0;
 
               return (
@@ -171,19 +192,23 @@ export default function StoreCart() {
                           {prod.productName || "Sản phẩm không xác định"}
                         </Link>
                         <div className="mt-1 flex items-baseline gap-2">
-                          {/* 🌟 ĐÃ SỬA: Dùng unitPrice */}
                           <span className="text-lg font-bold text-red-500">{unitPrice.toLocaleString('vi-VN')} ₫</span>
                           <span className="text-sm text-gray-400 line-through">{(unitPrice * 1.2).toLocaleString('vi-VN')} ₫</span>
                         </div>
                       </div>
-                      <button onClick={() => handleRemove(prod.id)} className="text-gray-400 hover:text-red-500 shrink-0 mt-1"><MdDelete size={20} /></button>
+
+                      {/* 🌟 ĐÃ SỬA: Truyền thêm item.variantId vào handleRemove */}
+                      <button onClick={() => handleRemove(prod.id, item.variantId)} className="text-gray-400 hover:text-red-500 shrink-0 mt-1"><MdDelete size={20} /></button>
+
                     </div>
 
                     <div className="flex justify-end mt-2">
                       <div className="flex items-center rounded border border-gray-200 bg-white">
-                        <button onClick={() => handleQuantityChange(prod.id, item.quantity, -1)} className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition">-</button>
+                        <button onClick={() => handleQuantityChange(prod.id, item.variantId, item.quantity, -1)} className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition">-</button>
+
                         <span className="flex h-7 w-10 items-center justify-center border-x border-gray-200 text-sm font-medium text-navy-700">{item.quantity}</span>
-                        <button onClick={() => handleQuantityChange(prod.id, item.quantity, 1)} className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition">+</button>
+
+                        <button onClick={() => handleQuantityChange(prod.id, item.variantId, item.quantity, 1)} className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-100 transition">+</button>
                       </div>
                     </div>
                   </div>

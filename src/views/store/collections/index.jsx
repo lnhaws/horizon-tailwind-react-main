@@ -47,8 +47,24 @@ export default function Collections() {
   }, [currentCategoryId, searchQuery]);
 
   const getImageUrl = (url) => {
-    if (!url) return "https://via.placeholder.com/300";
-    return url.startsWith("http") ? url : `http://localhost:8900/api/catalog/${url.replace(/^\//, '')}`;
+    if (!url || url === "null" || url === "undefined") return "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop";
+    if (url.startsWith("http")) return url;
+    const cleanUrl = url.startsWith("/") ? url.slice(1) : url;
+    return `http://localhost:8900/api/catalog/${cleanUrl}`;
+  };
+
+  const renderPrice = (product) => {
+    // Nếu có biến thể, tìm giá nhỏ nhất
+    if (product.variants && product.variants.length > 0) {
+      const minPrice = Math.min(...product.variants.map(v => v.price));
+      return (
+        <>
+          {minPrice.toLocaleString('vi-VN')} ₫
+        </>
+      );
+    }
+    // Nếu không có biến thể, lấy giá gốc
+    return `${(product.price || 0).toLocaleString('vi-VN')} ₫`;
   };
 
   // Hàm xử lý khi bấm vào danh mục (sẽ tự động xóa từ khóa tìm kiếm cũ nếu có)
@@ -71,7 +87,6 @@ export default function Collections() {
 
       <div className="flex flex-col gap-8 md:flex-row">
         
-        {/* CỘT TRÁI: BỘ LỌC DANH MỤC */}
         <div className="w-full md:w-1/4 shrink-0">
           <div className="sticky top-24 rounded-2xl bg-white p-6 shadow-sm border border-orange-50 dark:bg-navy-800 dark:border-navy-700">
             <h2 className="mb-4 flex items-center gap-2 font-bold text-navy-700 dark:text-white text-lg border-b border-gray-100 pb-3">
@@ -102,7 +117,6 @@ export default function Collections() {
           </div>
         </div>
 
-        {/* CỘT PHẢI: LƯỚI SẢN PHẨM */}
         <div className="flex-1">
           {loading ? (
              <LoadingSpinner text="Đang nạp menu..." />
@@ -120,7 +134,9 @@ export default function Collections() {
                   </div>
                   <div className="flex flex-col p-5">
                     <h3 className="text-lg font-bold text-[#5C4033] dark:text-white line-clamp-2">{product.productName}</h3>
-                    <p className="mt-3 text-xl font-black text-amber-600">{product.price.toLocaleString('vi-VN')} ₫</p>
+                    <p className="mt-3 text-xl font-black text-amber-600">
+                        {renderPrice(product)}
+                    </p>
                   </div>
                 </Link>
               ))}

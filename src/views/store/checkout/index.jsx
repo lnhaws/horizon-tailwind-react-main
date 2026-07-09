@@ -1,4 +1,3 @@
-// src/views/store/checkout/index.jsx
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import orderApi from "api/orderApi";
@@ -16,7 +15,9 @@ export default function StoreCheckout() {
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("COD");
   
-  // 🌟 1. LẤY THÔNG TIN USER TỪ LOCALSTORAGE ĐỂ TỰ ĐỘNG ĐIỀN
+  // 🌟 STATE LƯU TRỮ LỖI CỦA FORM
+  const [errors, setErrors] = useState({});
+  
   const currentUserStr = localStorage.getItem("currentUser");
   const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
   const userDetails = currentUser?.userDetails || {};
@@ -24,7 +25,6 @@ export default function StoreCheckout() {
   const defaultFullName = [userDetails.lastName, userDetails.firstName].filter(Boolean).join(" ");
   const defaultAddress = [userDetails.streetNumber, userDetails.street, userDetails.locality].filter(Boolean).join(", ");
   
-  // 🌟 2. GẮN DỮ LIỆU MẶC ĐỊNH VÀO STATE
   const [shippingInfo, setShippingInfo] = useState({
       fullName: defaultFullName || "",
       phone: userDetails.phoneNumber || "",
@@ -52,11 +52,44 @@ export default function StoreCheckout() {
 
   const handleInputChange = (e) => {
       setShippingInfo({ ...shippingInfo, [e.target.name]: e.target.value });
+      if (errors[e.target.name]) {
+          setErrors({ ...errors, [e.target.name]: null });
+      }
+  };
+
+  const validateForm = () => {
+      let newErrors = {};
+      let isValid = true;
+
+      if (!shippingInfo.fullName.trim()) {
+          newErrors.fullName = "Vui lòng nhập họ và tên người nhận.";
+          isValid = false;
+      }
+
+      if (!shippingInfo.phone.trim()) {
+          newErrors.phone = "Vui lòng nhập số điện thoại.";
+          isValid = false;
+      } else if (!/^(0[3|5|7|8|9])+([0-9]{8})$/.test(shippingInfo.phone.trim())) {
+          newErrors.phone = "Số điện thoại không hợp lệ (VD: 0912345678).";
+          isValid = false;
+      }
+
+      if (!shippingInfo.address.trim()) {
+          newErrors.address = "Vui lòng nhập địa chỉ giao hàng.";
+          isValid = false;
+      }
+
+      setErrors(newErrors);
+      return isValid;
   };
 
   const handlePlaceOrder = async (e) => {
       e.preventDefault(); 
       
+      if (!validateForm()) {
+          return;
+      }
+
       if (!currentUser || !currentUser.id) {
           alert("Vui lòng đăng nhập để đặt hàng!");
           navigate("/auth/sign-in");
@@ -75,14 +108,12 @@ export default function StoreCheckout() {
       };
       
       try {
-          // 1. Tạo đơn hàng
           const response = await orderApi.createOrder(currentUser.id, orderPayload);
           const newOrderId = response.id; 
           const orderTotal = response.total; 
           
           window.dispatchEvent(new Event('cartUpdated'));
           
-          // 2. Chuyển hướng VNPay hoặc Báo thành công
           if (paymentMethod === "VNPAY") {
               const paymentUrl = await paymentApi.createVnPayUrl(newOrderId, orderTotal);
               if (paymentUrl) {
@@ -93,17 +124,24 @@ export default function StoreCheckout() {
               }
           } else {
               alert(`🎉 ĐẶT HÀNG THÀNH CÔNG!\nMã đơn hàng của bạn là: #${newOrderId}\nCảm ơn bạn đã mua sắm!`);
-              navigate("/orders"); // Đặt xong thì cho bay thẳng sang trang Lịch sử đơn hàng
+              navigate("/orders"); 
           }
       } catch (error) {
           console.error("Lỗi đặt hàng:", error);
-          alert("Có lỗi xảy ra khi đặt hàng. Vui lòng kiểm tra lại hệ thống!");
+          
+          if (error.response && error.response.data) {
+              const errorMsg = typeof error.response.data === 'object' 
+                  ? JSON.stringify(error.response.data, null, 2) 
+                  : error.response.data;
+              alert("🚨 Backend báo lỗi từ chối đơn hàng:\n\n" + errorMsg);
+          } else {
+              alert("Có lỗi xảy ra khi đặt hàng. Vui lòng kiểm tra lại hệ thống!");
+          }
       } finally {
           setLoading(false);
       }
   };
 
-  // 🌟 ĐÃ SỬA: Lấy chuẩn subTotal từ Backend để cộng tổng tiền
   const totalAmount = cartItems.reduce((sum, item) => sum + (item.subTotal || 0), 0);
 
   return (
@@ -116,8 +154,6 @@ export default function StoreCheckout() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
-          
-          {/* CỘT TRÁI: FORM ĐIỀN THÔNG TIN & THANH TOÁN */}
           <div className="w-full lg:w-2/3 flex flex-col gap-6">
               
               <div className="rounded-[20px] bg-white p-6 shadow-sm border border-gray-100 dark:border-navy-700 dark:bg-navy-800">
@@ -129,15 +165,21 @@ export default function StoreCheckout() {
                   <form id="checkout-form" onSubmit={handlePlaceOrder} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Họ và tên *</label>
-                          <input type="text" name="fullName" value={shippingInfo.fullName} required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="Nhập họ và tên" />
+                          <input type="text" name="fullName" value={shippingInfo.fullName} onChange={handleInputChange} className={`w-full rounded-xl border bg-gray-50 p-3 text-sm outline-none transition-all dark:bg-navy-900 dark:text-white ${errors.fullName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-brand-500 dark:border-navy-600'}`} placeholder="Nhập họ và tên" />
+                          {/* 🌟 HIỂN THỊ LỖI HỌ TÊN */}
+                          {errors.fullName && <p className="mt-1 text-xs font-bold text-red-500">{errors.fullName}</p>}
                       </div>
                       <div>
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Số điện thoại *</label>
-                          <input type="tel" name="phone" value={shippingInfo.phone} required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="VD: 0912345678" />
+                          <input type="tel" name="phone" value={shippingInfo.phone} onChange={handleInputChange} className={`w-full rounded-xl border bg-gray-50 p-3 text-sm outline-none transition-all dark:bg-navy-900 dark:text-white ${errors.phone ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-brand-500 dark:border-navy-600'}`} placeholder="VD: 0912345678" />
+                          {/* 🌟 HIỂN THỊ LỖI SỐ ĐIỆN THOẠI */}
+                          {errors.phone && <p className="mt-1 text-xs font-bold text-red-500">{errors.phone}</p>}
                       </div>
                       <div className="md:col-span-2">
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Địa chỉ giao hàng chi tiết *</label>
-                          <input type="text" name="address" value={shippingInfo.address} required onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm outline-none focus:border-brand-500 dark:border-navy-600 dark:bg-navy-900 dark:text-white" placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/TP" />
+                          <input type="text" name="address" value={shippingInfo.address} onChange={handleInputChange} className={`w-full rounded-xl border bg-gray-50 p-3 text-sm outline-none transition-all dark:bg-navy-900 dark:text-white ${errors.address ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-brand-500 dark:border-navy-600'}`} placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/TP" />
+                          {/* 🌟 HIỂN THỊ LỖI ĐỊA CHỈ */}
+                          {errors.address && <p className="mt-1 text-xs font-bold text-red-500">{errors.address}</p>}
                       </div>
                       <div className="md:col-span-2">
                           <label className="mb-1 block text-sm font-bold text-gray-700 dark:text-gray-300">Ghi chú cho shipper (Tùy chọn)</label>
@@ -163,10 +205,8 @@ export default function StoreCheckout() {
                       </label>
                   </div>
               </div>
-
           </div>
 
-          {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG VÀ CHỐT */}
           <div className="w-full lg:w-1/3 flex flex-col">
              <div className="sticky top-24 rounded-[20px] border border-gray-200 bg-white p-6 shadow-sm dark:border-navy-700 dark:bg-navy-800">
                  <h2 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Đơn hàng của bạn ({cartItems.length} sản phẩm)</h2>
@@ -181,7 +221,6 @@ export default function StoreCheckout() {
                                  <span className="line-clamp-1 text-sm font-medium text-navy-700 dark:text-white">{item.product?.productName}</span>
                                  <span className="text-xs text-gray-500">SL: {item.quantity}</span>
                              </div>
-                             {/* 🌟 ĐÃ SỬA: Dùng trực tiếp item.subTotal */}
                              <span className="text-sm font-bold text-brand-500">{(item.subTotal || 0).toLocaleString('vi-VN')} ₫</span>
                          </div>
                      ))}
@@ -213,7 +252,6 @@ export default function StoreCheckout() {
                  </button>
              </div>
           </div>
-
       </div>
     </div>
   );
